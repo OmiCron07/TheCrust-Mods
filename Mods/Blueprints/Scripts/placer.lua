@@ -7,7 +7,14 @@ local Game = require("game")
 
 local Placer = {}
 
-local LinkStart = "StartNode_7_A30BB1064830FC46F18094A082539283"
+local LinkFields = {
+    Id = "LinkId_4_AC9D2B5A48151C50D5206D88EBAAA72F",
+    Start = "StartNode_7_A30BB1064830FC46F18094A082539283",
+    End = "EndNode_8_6B7685514510C82E9E33C09259213BF9",
+    Invalid = "Invalid_12_FE3B70EF4125246496B0A3A16B309E96",
+    Dead = "isDead_14_A791E9CB4F8DE716DEC7289DF0502AAE",
+    Hidden = "VisualHidden_16_CF1EC7AB41A504B6E2F828821165E5F0",
+}
 
 -- World-space target of a module, Z taken from the spawned actor (ground of the layer).
 local function ModuleTarget(Mod, OR, OC, Turns)
@@ -57,6 +64,11 @@ local function PlaceModule(PC, Geo, Mod, OR, OC, Turns)
     M.bInPlanningMode = true
     M:SettleModule()
     M.IsBuildedByPlayer = true
+    -- Placement validity squares stay visible on modules that never were the PC's CurrentModuleToBuild.
+    M.Undercells:ForEach(function(_, V)
+        local Cell = V:get()
+        if Game.Valid(Cell) then Cell:SetVision(false) end
+    end)
     return M
 end
 
@@ -66,16 +78,28 @@ local function NodeId(Module)
 end
 
 -- Same sequence as GodPlayer_PC "LMBForElectricWires" on a successful second click.
+-- "Add Link" takes the link by reference: UE4SS needs a Lua table there, so the new link ID
+-- is written back into CurrentLink by hand before registering it on both nodes.
 local function PlaceLink(EM, A, B)
     local NA, NB = NodeId(A), NodeId(B)
     if not NA or not NB then return false end
     EM:SetCurrentLinkStartNode(NA)
     EM:SetCurrentLinkEndNode(NB)
-    if EM.CurrentLink[LinkStart] ~= NA then
+    local Current = EM.CurrentLink
+    if Current[LinkFields.Start] ~= NA or Current[LinkFields.End] ~= NB then
         EM:ClearCurrentLinkInfo()
         return false
     end
-    EM["Add Link"](EM, EM.CurrentLink, false, {}, {})
+    local Link = {}
+    for _, Field in pairs(LinkFields) do Link[Field] = Current[Field] end
+    local Out = {}
+    EM["Add Link"](EM, Link, false, Out, {})
+    local Id = Out["Added Link Id"]
+    if not Id or Id < 0 then
+        EM:ClearCurrentLinkInfo()
+        return false
+    end
+    Current[LinkFields.Id] = Id
     EM:AddLinkToItsNodes(EM.CurrentLink)
     EM["Add Neighbours By Link"](EM, EM.CurrentLink)
     EM:DrawCurrentLinkPersistent()
@@ -83,11 +107,15 @@ local function PlaceLink(EM, A, B)
     return true
 end
 
--- Cells already used by modules, built belts or holo belts on the layer.
+-- Cells already used by modules (except their IO cells, where belts connect), built belts or holo belts.
 local function OccupiedCells(CM, Layer)
     local Used = {}
     for _, M in ipairs(Game.LayerModules(Layer)) do
         for _, Cell in ipairs(Game.ModuleCells(M)) do Used[Cell] = true end
+        M.IOCells:ForEach(function(_, V)
+            local IO = V:get()
+            if Game.Valid(IO) then Used[IO.CellId] = nil end
+        end)
     end
     local function Mark(Grid2)
         if not Game.Valid(Grid2) then return end

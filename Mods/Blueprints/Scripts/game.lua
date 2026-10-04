@@ -10,8 +10,9 @@ Game.LayerUnderground = 0
 Game.LayerOrbital = 1
 Game.LayerCrater = 2
 
--- Building states that must not be captured (dismantled or being dismantled).
-local ExcludedStates = { [6] = true, [7] = true, [8] = true }
+-- Building states to ignore: not settled yet (cursor preview) and dismantled / being dismantled.
+-- ("Settled Module" is only set on placement, it stays false for modules loaded from a save.)
+local ExcludedStates = { [0] = true, [6] = true, [7] = true, [8] = true }
 
 function Game.Valid(Obj)
     return Obj ~= nil and Obj:IsValid()
@@ -116,7 +117,7 @@ function Game.LayerModules(Layer)
         if Game.Valid(M) then
             local Name = M:GetFullName()
             if Name:find("PersistentLevel", 1, true) and not Name:find("Default__", 1, true)
-                and M.bOnSurface == OnSurface and M["Settled Module"]
+                and M.bOnSurface == OnSurface
                 and not ExcludedStates[M.BuildingStateCPP] then
                 Result[#Result + 1] = M
             end
