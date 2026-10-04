@@ -48,6 +48,23 @@ function Game.Level(PC)
     return Out["Out CurrentLevel"]
 end
 
+-- GetGroundManager takes a TorchLocation: underground layer -> 1, crater layer -> 0
+-- (same mapping as GodPlayer_PC TickFunctionForPlacingModuleMode).
+function Game.GroundManager(PC, Layer)
+    local Out = {}
+    Game.Level(PC):GetGroundManager(Layer == Game.LayerUnderground and 1 or 0, Out)
+    return Out.GroundManager
+end
+
+-- Production scheme (APS ability) of a module: active one, or the one chosen before construction.
+function Game.ModuleRecipe(Module)
+    local Agency = Module.AbilityAgencyVar
+    local Active = Game.Valid(Agency) and Agency["Active APS Ability"]:ToString() or ""
+    if Active ~= "" then return Active end
+    if Module.bChangedRecipieBeforeBuilt then return Module.AbilityBeforeBuilt:ToString() end
+    return ""
+end
+
 function Game.ConveyorManager(PC, Layer)
     if Layer == Game.LayerUnderground then return PC.ConveyorManagerUnderground end
     if Layer == Game.LayerCrater then return PC.ConveyorManagerSurface end

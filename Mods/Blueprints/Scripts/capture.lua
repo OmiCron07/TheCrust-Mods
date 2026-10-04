@@ -2,7 +2,8 @@
 --
 -- Blueprint format (all offsets are in cells, relative to the origin cell = rectangle center):
 --   Layer    : CurrentGameLayer the blueprint was taken on (0 underground, 2 crater)
---   Modules  : { Class, DR, DC (actor location, may be x.5), Turns (yaw / 90), Mirrored, Cells = {{dr, dc}, ...} }
+--   Modules  : { Class, DR, DC (actor location, may be x.5), Turns (yaw / 90), Mirrored,
+--                Recipe (APS ability name, "" if none), Cells = {{dr, dc}, ...} }
 --   Belts    : array of paths, each path = array of {dr, dc, dir} in flow order (dir = ECDirection)
 --   Links    : { A, B } indices into Modules joined by an electric wire
 --   Skipped  : count of unsupported conveyor parts (distributors, underground belts)
@@ -45,6 +46,7 @@ local function CaptureModules(Rect, OR, OC, Geo, Layer)
                 DC = RoundHalf(Col) - OC,
                 Turns = Round(M:K2_GetActorRotation().Yaw / 90) % 4,
                 Mirrored = M.IsMirrored == true,
+                Recipe = Game.ModuleRecipe(M),
                 Cells = Cells,
             }
             ById[M["Module ID"]] = #Modules

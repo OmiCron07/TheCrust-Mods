@@ -293,26 +293,46 @@ end
 -- Hotkeys fire on the UE4SS input thread: only queue them, the game-thread tick runs them.
 -- (Queued ExecuteInGameThread closures outlive the Lua state on auto-reload and crash the game.)
 local PendingKeys = {}
-local function OnKey(Handler)
-    return function() PendingKeys[#PendingKeys + 1] = Handler end
+local function OnKey(Handler, Modifiers)
+    return function() PendingKeys[#PendingKeys + 1] = { Handler = Handler, Modifiers = Modifiers } end
+end
+
+local ModifierKeyNames = {
+    CONTROL = { "LeftControl", "RightControl" },
+    SHIFT = { "LeftShift", "RightShift" },
+    ALT = { "LeftAlt", "RightAlt" },
+}
+
+-- UE4SS may also fire a binding when extra modifiers are held: require the exact modifier set.
+local function ModifiersMatch(PC, Wanted)
+    for Name, Keys in pairs(ModifierKeyNames) do
+        local Down = Game.IsKeyDown(PC, Keys[1]) or Game.IsKeyDown(PC, Keys[2])
+        if Down ~= (Wanted[Name] == true) then return false end
+    end
+    return true
 end
 
 function RunPendingKeys(PC)
     local Keys = PendingKeys
     PendingKeys = {}
     if UI.IsTyping() then return end
-    for _, Handler in ipairs(Keys) do Handler(PC) end
+    for _, K in ipairs(Keys) do
+        if ModifiersMatch(PC, K.Modifiers) then K.Handler(PC) end
+    end
 end
 
 local function Bind(Name, Handler)
     local B = Config.Keys[Name]
     if not B or not Key[B.Key] then return end
-    local Mods = {}
-    for _, M in ipairs(B.Modifiers or {}) do Mods[#Mods + 1] = ModifierKey[M] end
+    local Mods, Wanted = {}, {}
+    for _, M in ipairs(B.Modifiers or {}) do
+        Mods[#Mods + 1] = ModifierKey[M]
+        Wanted[M] = true
+    end
     if #Mods > 0 then
-        RegisterKeyBind(Key[B.Key], Mods, OnKey(Handler))
+        RegisterKeyBind(Key[B.Key], Mods, OnKey(Handler, Wanted))
     else
-        RegisterKeyBind(Key[B.Key], OnKey(Handler))
+        RegisterKeyBind(Key[B.Key], OnKey(Handler, Wanted))
     end
 end
 
@@ -329,10 +349,7 @@ end)
 Bind("SelectArea", StartSelect)
 Bind("CopySelection", function(PC) HandleAction(PC, "CopySelection") end)
 Bind("PasteClipboard", function(PC) HandleAction(PC, "PasteClipboard") end)
-Bind("RotateClockwise", function(PC)
-    if Game.IsKeyDown(PC, "LeftShift") or Game.IsKeyDown(PC, "RightShift") then return end
-    Rotate(PC, 1)
-end)
+Bind("RotateClockwise", function(PC) Rotate(PC, 1) end)
 Bind("RotateCounterClockwise", function(PC) Rotate(PC, 3) end)
 
 -- Game-thread tick: hooked on a GodPawn function the game calls every frame (see ZoomToCursor).

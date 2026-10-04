@@ -22,7 +22,33 @@ local function ModuleTarget(Mod, OR, OC, Turns)
     return OR + DR, OC + DC
 end
 
-local function PlaceModule(PC, Geo, Mod, OR, OC, Turns)
+-- Same validation as GodPlayer_PC TickFunctionForPlacingModuleMode ("Can Settle").
+-- CheckIfCanSettleModule is not used by vanilla placement and wrongly rejects e.g. Big Bulk Storage.
+local function CanSettle(PC, Layer, M)
+    M:RecalculatePerimeterAroundUndercells({})
+    local Cpp = {}
+    M:CPPPlacementCheck(Cpp)
+    if not Cpp.Yes then return false, "invalid placement" end
+    if Layer == Game.LayerUnderground then
+        local Soil = {}
+        M["Check Intersection Of Perimeter Cells and Soil"](M, Soil)
+        if Soil["Intersection detected"] then return false, "touches undug soil" end
+    end
+    local Interior = {}
+    M:CheckIfCanSettleModuleWithInteriorSettings(Interior)
+    if not Interior.Success then return false, "interior/exterior rule" end
+    local Anchor = {}
+    M:GetAnchorCellCurrentRealID(Anchor)
+    if not M:CheckPossibilityOfModuleSettlementAccordingToGM(Game.GroundManager(PC, Layer), Anchor["Out SmallIndex"]) then
+        return false, "blocked"
+    end
+    local Count = {}
+    PC:CheckIfCanSettleCuzOfThisTypeModulesCount(M, Count)
+    if Count.Can == false then return false, "module count limit" end
+    return true
+end
+
+local function PlaceModule(PC, Layer, Geo, Mod, OR, OC, Turns)
     local Cls = Game.LoadClass(Mod.Class)
     if not Cls then return nil, "class not found: " .. Mod.Class end
 
@@ -51,13 +77,10 @@ local function PlaceModule(PC, Geo, Mod, OR, OC, Turns)
         return nil, "setup failed: " .. tostring(Err)
     end
 
-    local Check = {}
-    M:CheckIfCanSettleModule(Check, {})
-    local Count = {}
-    pcall(function() PC:CheckIfCanSettleCuzOfThisTypeModulesCount(M, Count) end)
-    if not Check["Out No Obstacles"] or Count.Can == false then
+    local CheckOk, Can, Reason = pcall(CanSettle, PC, Layer, M)
+    if not (CheckOk and Can) then
         M:K2_DestroyActor()
-        return nil, "blocked"
+        return nil, CheckOk and Reason or ("check failed: " .. tostring(Can))
     end
 
     M.bPlanningModeCPP = true
@@ -69,6 +92,10 @@ local function PlaceModule(PC, Geo, Mod, OR, OC, Turns)
         local Cell = V:get()
         if Game.Valid(Cell) then Cell:SetVision(false) end
     end)
+    -- Production scheme: same call as the vanilla paste-settings (GodPlayer_PC "Copy-PasteSettings").
+    if Mod.Recipe and Mod.Recipe ~= "" and Game.Valid(M.AbilityAgencyVar) then
+        pcall(function() M.AbilityAgencyVar:ExecuteAbility(Mod.Recipe, nil) end)
+    end
     return M
 end
 
@@ -182,7 +209,7 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
 
     local Placed = {}
     for i, Mod in ipairs(BP.Modules) do
-        local Ok, M, Err = pcall(PlaceModule, PC, Geo, Mod, OR, OC, Turns)
+        local Ok, M, Err = pcall(PlaceModule, PC, Layer, Geo, Mod, OR, OC, Turns)
         if Ok and M then
             Placed[i] = M
             Report.Modules = Report.Modules + 1
@@ -213,7 +240,7 @@ end
 
 function Placer.Summary(R)
     local S = string.format("Placed %d ghost modules, %d belt pieces, %d wires", R.Modules, R.BeltPieces, R.Links)
-    if R.ModulesFailed > 0 then S = S .. string.format(" | %d modules blocked", R.ModulesFailed) end
+    if R.ModulesFailed > 0 then S = S .. string.format(" | %d modules blocked (%s)", R.ModulesFailed, R.Errors[1] or "?") end
     if R.BeltCellsBlocked > 0 then S = S .. string.format(" | %d belt cells blocked", R.BeltCellsBlocked) end
     return S
 end
