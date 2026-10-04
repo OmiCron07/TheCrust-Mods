@@ -12,6 +12,8 @@ local Root, Panel, StatusText, SelectionText, NameBox, PageText
 local Buttons = {}      -- { Widget, Action, Arg, WasPressed }
 local Rows = {}         -- { Box, Label, Place, Rename, Delete }
 local Page = 0
+local AnyPressed = false
+local ModeLabel
 local PendingDelete     -- library index awaiting delete confirmation
 local Visible = false
 
@@ -88,7 +90,8 @@ end
 
 -- Drops every widget reference without touching them (they may belong to a destroyed world).
 function UI.Forget()
-    Root, Panel, StatusText, SelectionText, NameBox, PageText = nil, nil, nil, nil, nil, nil
+    Root, Panel, StatusText, SelectionText, NameBox, PageText, ModeLabel = nil, nil, nil, nil, nil, nil, nil
+    AnyPressed = false
     Buttons, Rows, Visible, PendingDelete = {}, {}, false, nil
 end
 
@@ -125,6 +128,9 @@ function UI.Create(PC, Position)
         (Button("Copy + paste", "CopySelection")),
         (Button("Paste clipboard", "PasteClipboard")),
     })
+    local ModeButton
+    ModeButton, ModeLabel = Button("Paste as: Plan", "TogglePasteMode")
+    HRow(V, { ModeButton, (Button("Build selection", "BuildSelection")) })
 
     SelectionText = Text("No selection", 11, Colors.Dim)
     Pad(V:AddChildToVerticalBox(SelectionText), 0, 4)
@@ -179,6 +185,12 @@ function UI.SetStatus(Str)
     if Game.Valid(StatusText) then StatusText:SetText(FText(Str)) end
 end
 
+function UI.SetPasteMode(Construction)
+    if Game.Valid(ModeLabel) then
+        ModeLabel:SetText(FText(Construction and "Paste as: Build" or "Paste as: Plan"))
+    end
+end
+
 function UI.SetSelectionInfo(Str)
     if Game.Valid(SelectionText) then SelectionText:SetText(FText(Str)) end
 end
@@ -213,8 +225,12 @@ end
 function UI.Poll()
     local Events = {}
     if not UI.IsVisible() then return Events end
+    -- Per-frame cost: only poll the buttons while the cursor is over the panel or a press is pending.
+    if not AnyPressed and not Root:IsHovered() then return Events end
+    AnyPressed = false
     for _, B in ipairs(Buttons) do
         local Pressed = B.Widget:IsPressed()
+        AnyPressed = AnyPressed or Pressed
         if B.WasPressed and not Pressed and B.Widget:IsHovered() then
             local Index = B.Arg and (Page * RowsPerPage + B.Arg)
             if B.Action == "PrevPage" then

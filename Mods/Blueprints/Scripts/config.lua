@@ -13,6 +13,11 @@ local Config = {
         CopySelection = { Key = "K", Modifiers = { "CONTROL", "SHIFT" } },
         -- Paste the clipboard (last copied selection or last placed blueprint).
         PasteClipboard = { Key = "K", Modifiers = { "ALT" } },
+        -- Start construction of the planned modules and holo belts of the current selection
+        -- (same as the vanilla play button on each planned module).
+        BuildSelection = { Key = "K", Modifiers = { "SHIFT" } },
+        -- Switch pasting between planning ghosts and direct construction.
+        TogglePasteMode = { Key = "K", Modifiers = { "CONTROL", "ALT" } },
         -- While pasting: rotate clockwise / counter clockwise (same keys as vanilla module rotation,
         -- which do nothing while no vanilla module is being placed).
         RotateClockwise = { Key = "R", Modifiers = {} },
@@ -25,11 +30,15 @@ local Config = {
     -- Paste conveyor belts as holo (unbuilt) sections. Build them with the vanilla "build" button.
     PasteConveyors = true,
 
+    -- Default paste mode: false = planning ghosts, true = start construction right away
+    -- (modules over the supply limit stay planned; belts are paid in credits like vanilla).
+    PasteAsConstruction = false,
+
     -- Recreate electric wires between pasted modules (vanilla wire cost may apply).
     PasteElectricLinks = true,
 
-    -- Panel offset on screen (pixels from the top-right corner).
-    PanelPosition = { X = 24, Y = 120 },
+    -- Panel offset on screen (pixels from the top-right corner); X leaves room for the module panel.
+    PanelPosition = { X = 480, Y = 120 },
 
     -- Enable debug log output in the UE4SS console / log file.
     DebugLogging = false,

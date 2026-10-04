@@ -12,6 +12,8 @@ between pasted modules. Build them afterwards with the normal game buttons.
 | `Ctrl+K` | Select an area, then drag with the left mouse button |
 | `Ctrl+Shift+K` | Copy the selection and start pasting it |
 | `Alt+K` | Paste the clipboard again |
+| `Shift+K` | Start construction of the planned modules and holo belts in the selection |
+| `Ctrl+Alt+K` | Switch pasting between planning ghosts and direct construction |
 | `R` / `Shift+R` | While pasting: rotate clockwise / counter clockwise |
 | Left click | While pasting: place the ghosts (stay in paste mode) |
 | Right click | Cancel the selection / stop pasting |
@@ -25,6 +27,12 @@ between pasted modules. Build them afterwards with the normal game buttons.
 
 The panel offers the same actions plus the library: name a selection and click **Save selection**,
 then **Place**, **Rename** (uses the name box) or **Delete** (click twice) a saved blueprint.
+
+### Paste modes
+- **Plan** (default, `PasteAsConstruction = false`): vanilla planning ghosts, built later with the
+  play button of each module, or all at once with **Build selection** / `Shift+K`.
+- **Build**: construction starts right away. Modules over the supply limit stay planned; belt
+  sections are paid in credits like the vanilla build and stay holo when credits are missing.
 
 ## What is copied
 - Modules with rotation, mirroring and production scheme.

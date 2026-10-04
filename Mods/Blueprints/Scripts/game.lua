@@ -24,14 +24,24 @@ function Game.PC()
     if Game.Valid(PC) then return PC end
 end
 
+-- The game instance lives for the whole process: look it up once (FindFirstOf scans every UObject,
+-- far too slow to call per frame).
+local GameInstance
 function Game.IsLoading()
-    local GI = FindFirstOf("CrustGameInstance_C")
-    return Game.Valid(GI) and GI.LoadingInProcess == true
+    if not Game.Valid(GameInstance) then GameInstance = FindFirstOf("CrustGameInstance_C") end
+    return Game.Valid(GameInstance) and GameInstance.LoadingInProcess == true
+end
+
+-- PlayerController from the GodPawn that runs the per-frame hook (no object scan).
+function Game.PCFromPawn(Pawn)
+    if not Game.Valid(Pawn) then return nil end
+    local PC = Pawn.PlayerControllerRef
+    if Game.Valid(PC) then return PC end
 end
 
 -- Identifies one gameplay world: the PC is recreated on every save load / level change.
 function Game.SessionKey(PC)
-    return PC:GetFullName()
+    return PC:GetAddress()
 end
 
 function Game.Layer(PC)

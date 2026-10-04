@@ -56,14 +56,29 @@ local function RunCommand(Source)
     end
 end
 
-LoopAsync(250, function()
+-- Polled from a per-frame game-thread hook (GodPawn ArmLenght): ExecuteInGameThread queues
+-- stopped running after another mod's UE4SS auto-reload, leaving the bridge deaf.
+local Frame = 0
+local function OnFrame()
+    Frame = Frame + 1
+    if Frame % 15 ~= 0 then return end
     local F = io.open(CmdFile, "r")
-    if not F then return false end
+    if not F then return end
     local Source = F:read("a")
     F:close()
     os.remove(CmdFile)
-    ExecuteInGameThread(function() RunCommand(Source) end)
-    return false
-end)
+    RunCommand(Source)
+end
+
+local HookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"
+local Hooked = false
+local function TryHook()
+    if Hooked then return true end
+    local Fn = StaticFindObject(HookPath)
+    if Fn and Fn:IsValid() then Hooked = pcall(RegisterHook, HookPath, OnFrame) end
+    return Hooked
+end
+TryHook()
+LoopAsync(1000, TryHook)
 
 print("[DevBridge] Listening on " .. CmdFile .. "\n")

@@ -11,7 +11,7 @@ Config = Config or {}
 Config.Keys = Config.Keys or {}
 if Config.PasteConveyors == nil then Config.PasteConveyors = true end
 if Config.PasteElectricLinks == nil then Config.PasteElectricLinks = true end
-Config.PanelPosition = Config.PanelPosition or { X = 24, Y = 140 }
+Config.PanelPosition = Config.PanelPosition or { X = 480, Y = 120 }
 
 local Grid = require("grid")
 local Game = require("game")
@@ -38,6 +38,7 @@ local Colors = {
 local State = {
     Mode = "idle", -- idle | selecting | selected | pasting
     Library = Storage.Load(LibraryFile),
+    PasteAsConstruction = Config.PasteAsConstruction == true,
 }
 
 local function Log(Message)
@@ -98,7 +99,8 @@ local function StartPaste(PC, BP, Label)
     State.Clipboard = BP
     local Note = ""
     if BP.Layer ~= State.Layer then Note = " (made on " .. (LayerNames[BP.Layer] or "?") .. ")" end
-    Notify("Pasting " .. Label .. Note .. ": left click places, R / Shift+R rotates, right click stops")
+    local As = State.PasteAsConstruction and "construction" or "planning ghosts"
+    Notify("Pasting " .. Label .. Note .. " as " .. As .. ": left click places, R / Shift+R rotates, right click stops")
 end
 
 local function SelectionBox()
@@ -181,6 +183,16 @@ local function HandleAction(PC, Action, Index)
             SaveLibrary()
             Notify("Deleted '" .. BP.Name .. "'")
         end
+    elseif Action == "TogglePasteMode" then
+        State.PasteAsConstruction = not State.PasteAsConstruction
+        UI.SetPasteMode(State.PasteAsConstruction)
+        Notify(State.PasteAsConstruction and "Paste mode: construction" or "Paste mode: planning ghosts")
+    elseif Action == "BuildSelection" then
+        local S = State.Selection
+        if not (S and State.Mode == "selected") then Notify("Select an area first") return end
+        local Report = Placer.BuildArea(PC, State.Layer, S.R0, S.C0, S.R1, S.C1)
+        for _, E in ipairs(Report.Errors) do Log(E) end
+        Notify(Placer.BuildSummary(Report))
     elseif Action == "Refresh" then
         RefreshLibrary()
     end
@@ -211,7 +223,12 @@ local function TickPasting(PC, LeftPressed, RightPressed)
         Visuals.Show(PC, State.Geo, Boxes)
     end
     if LeftPressed and not UI.IsHovered() then
-        local Report = Placer.Paste(PC, State.Layer, P.BP, Cell, P.Turns, Config)
+        local Options = {
+            PasteConveyors = Config.PasteConveyors,
+            PasteElectricLinks = Config.PasteElectricLinks,
+            Construction = State.PasteAsConstruction,
+        }
+        local Report = Placer.Paste(PC, State.Layer, P.BP, Cell, P.Turns, Options)
         for _, E in ipairs(Report.Errors) do Log(E) end
         Notify(Placer.Summary(Report))
         Preview.Refresh(PC, State.Layer)
@@ -232,8 +249,8 @@ end
 
 local WarmupFrames = 60
 
-local function Tick()
-    local PC = Game.PC()
+local function Tick(Pawn)
+    local PC = Game.PCFromPawn(Pawn)
     if not PC or Game.IsLoading() then
         if State.Session then ForgetSession() end
         return
@@ -253,7 +270,14 @@ local function Tick()
     if not UI.IsCreated() then
         Visuals.CleanupLeftovers()
         UI.Create(PC, Config.PanelPosition)
+        UI.SetPasteMode(State.PasteAsConstruction)
         RefreshLibrary()
+    end
+
+    -- Nothing else to do while idle with the panel closed (keeps the per-frame cost minimal).
+    if State.Mode == "idle" and not UI.IsVisible() then
+        State.Left, State.Right = false, false
+        return
     end
 
     for _, E in ipairs(UI.Poll()) do HandleAction(PC, E.Action, E.Index) end
@@ -300,8 +324,8 @@ local function Tick()
 end
 
 local LastError
-local function SafeTick()
-    local Ok, Err = pcall(Tick)
+local function SafeTick(Pawn)
+    local Ok, Err = pcall(Tick, Pawn)
     if not Ok and Err ~= LastError then
         LastError = Err
         print("[Blueprints] Tick error: " .. tostring(Err) .. "\n")
@@ -367,6 +391,8 @@ end)
 Bind("SelectArea", StartSelect)
 Bind("CopySelection", function(PC) HandleAction(PC, "CopySelection") end)
 Bind("PasteClipboard", function(PC) HandleAction(PC, "PasteClipboard") end)
+Bind("BuildSelection", function(PC) HandleAction(PC, "BuildSelection") end)
+Bind("TogglePasteMode", function(PC) HandleAction(PC, "TogglePasteMode") end)
 Bind("RotateClockwise", function(PC) Rotate(PC, 1) end)
 Bind("RotateCounterClockwise", function(PC) Rotate(PC, 3) end)
 
@@ -374,8 +400,8 @@ Bind("RotateCounterClockwise", function(PC) Rotate(PC, 3) end)
 local TickHookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"
 local TickHooked = false
 
-local function OnFrame()
-    SafeTick()
+local function OnFrame(Context)
+    SafeTick(Context:get())
 end
 
 local function TryHookTick()

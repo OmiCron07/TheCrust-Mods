@@ -214,6 +214,9 @@ local function PlaceBelts(CM, Layer, BP, OR, OC, Turns, Report)
                     CM:BuildHolo(S, E, Piece.Vertical, false, -1)
                     Report.BeltPieces = Report.BeltPieces + 1
                 end
+                for _, P in ipairs(Sub) do
+                    Report.BeltCells[#Report.BeltCells + 1] = Grid.ToCell(P[1], P[2])
+                end
             end
             Run = {}
         end
@@ -225,11 +228,80 @@ local function PlaceBelts(CM, Layer, BP, OR, OC, Turns, Report)
     CM:UpdateHoloSectionCosts()
 end
 
--- Pastes BP with its origin on OriginCell, rotated by Turns quarter turns clockwise.
-function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
-    local Report = {
+-- Vanilla "play" button of a planned module: supply / unlock check, then start construction.
+-- Returns true when the module is (now) under construction.
+function Placer.BuildPlanned(M)
+    if not M.bPlanningModeCPP then return true end
+    if not M["Available For Building from PlanningMode"](M) then return false end
+    M:ChangeFromPlanningModeToDefault()
+    return true
+end
+
+-- Builds the holo belt sections covering Cells like the vanilla targeted build:
+-- CheckForSufficientFunds, SubtractNecessaryFunds (pays credits), BuildSection.
+function Placer.BuildBelts(CM, Cells, Report)
+    local Seen = {}
+    for _, Cell in ipairs(Cells) do
+        local S = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell)
+        if Game.Valid(S) and not S:IsBuilt() and not Seen[S:GetAddress()] then
+            Seen[S:GetAddress()] = true
+            local Funds = {}
+            CM:CheckForSufficientFunds(S, Funds)
+            if Funds.AreFundsSufficient then
+                CM:SubtractNecessaryFunds(S)
+                CM:BuildSection(S)
+                Report.SectionsBuilt = Report.SectionsBuilt + 1
+            else
+                Report.SectionsNoFunds = Report.SectionsNoFunds + 1
+            end
+        end
+    end
+    CM:UpdateHoloSectionCosts()
+end
+
+local function NewReport()
+    return {
         Modules = 0, ModulesFailed = 0, Links = 0, BeltPieces = 0, BeltCellsBlocked = 0, Errors = {},
+        BeltCells = {}, Built = 0, NotBuilt = 0, SectionsBuilt = 0, SectionsNoFunds = 0,
     }
+end
+
+-- Starts construction of the planned modules and holo belts inside a cell rectangle (inclusive).
+function Placer.BuildArea(PC, Layer, R0, C0, R1, C1)
+    local Report = NewReport()
+    local CM = Game.ConveyorManager(PC, Layer)
+    local Geo = Game.Geometry(CM)
+    for _, M in ipairs(Game.LayerModules(Layer)) do
+        if M.bPlanningModeCPP then
+            local Loc = M:K2_GetActorLocation()
+            local Row, Col = Game.WorldToRowCol(Geo, Loc.X, Loc.Y)
+            Row, Col = math.floor(Row + 0.5), math.floor(Col + 0.5)
+            if Row >= R0 and Row <= R1 and Col >= C0 and Col <= C1 then
+                local Ok, Done = pcall(Placer.BuildPlanned, M)
+                if Ok and Done then Report.Built = Report.Built + 1 else Report.NotBuilt = Report.NotBuilt + 1 end
+            end
+        end
+    end
+    local Cells = {}
+    for R = R0, R1 do
+        for C = C0, C1 do Cells[#Cells + 1] = Grid.ToCell(R, C) end
+    end
+    local Ok, Err = pcall(Placer.BuildBelts, CM, Cells, Report)
+    if not Ok then Report.Errors[#Report.Errors + 1] = "belts: " .. tostring(Err) end
+    return Report
+end
+
+function Placer.BuildSummary(R)
+    local S = string.format("Construction started: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
+    if R.NotBuilt > 0 then S = S .. string.format(" | %d modules kept planned (supply limit or locked)", R.NotBuilt) end
+    if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections lack credits", R.SectionsNoFunds) end
+    return S
+end
+
+-- Pastes BP with its origin on OriginCell, rotated by Turns quarter turns clockwise.
+-- Options.Construction starts construction right away (otherwise ghosts stay planned).
+function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
+    local Report = NewReport()
     local CM = Game.ConveyorManager(PC, Layer)
     if not Game.Valid(CM) then
         Report.Errors[1] = "No conveyor manager on this layer"
@@ -266,11 +338,25 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
         local Ok, Err = pcall(PlaceBelts, CM, Layer, BP, OR, OC, Turns, Report)
         if not Ok then Report.Errors[#Report.Errors + 1] = "belts: " .. tostring(Err) end
     end
+
+    if Options.Construction then
+        for _, M in pairs(Placed) do
+            local Ok, Done = pcall(Placer.BuildPlanned, M)
+            if Ok and Done then Report.Built = Report.Built + 1 else Report.NotBuilt = Report.NotBuilt + 1 end
+        end
+        local Ok, Err = pcall(Placer.BuildBelts, CM, Report.BeltCells, Report)
+        if not Ok then Report.Errors[#Report.Errors + 1] = "build belts: " .. tostring(Err) end
+    end
     return Report
 end
 
 function Placer.Summary(R)
     local S = string.format("Placed %d ghost modules, %d belt pieces, %d wires", R.Modules, R.BeltPieces, R.Links)
+    if R.Built > 0 or R.SectionsBuilt > 0 then
+        S = S .. string.format(" | construction: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
+    end
+    if R.NotBuilt > 0 then S = S .. string.format(" | %d kept planned (supply/locked)", R.NotBuilt) end
+    if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections lack credits", R.SectionsNoFunds) end
     if R.ModulesFailed > 0 then S = S .. string.format(" | %d modules blocked (%s)", R.ModulesFailed, R.Errors[1] or "?") end
     if R.BeltCellsBlocked > 0 then S = S .. string.format(" | %d belt cells blocked", R.BeltCellsBlocked) end
     return S
