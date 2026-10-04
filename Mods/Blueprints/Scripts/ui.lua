@@ -145,8 +145,8 @@ local function Layer(Overlay, TexturePath, Tint)
     local Img = Make("Image")
     StyleBrush(Img.Brush, TexturePath, Tint)
     local Slot = Overlay:AddChildToOverlay(Img)
-    Slot:SetHorizontalAlignment(3)
-    Slot:SetVerticalAlignment(3)
+    Slot:SetHorizontalAlignment(0) -- HAlign_Fill
+    Slot:SetVerticalAlignment(0)   -- VAlign_Fill
 end
 
 -- Removes panels left in the viewport by a previous instance of the mod (hot reload).
