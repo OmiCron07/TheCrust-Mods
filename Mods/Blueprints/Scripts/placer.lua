@@ -32,6 +32,9 @@ local function CanSettle(PC, Layer, M)
         -- Modules with special placement rules (e.g. deep ore extractors always return false) are
         -- validated by their CheckIfCanSettleModuleAccordingToUndermoduleCells override instead
         -- (extractors: enough cells on a mineral vein), then only the module count limit applies.
+        -- Extractors only know their active cells once recalculated (vanilla does it every tick
+        -- while the module follows the cursor); without it they count 0 cells on a vein.
+        pcall(function() M:RecalculateExtractorActiveCells() end)
         local Special = {}
         M:CheckIfCanSettleModuleAccordingToUndermoduleCells(Special)
         if not Special.Success then return false, "special placement rule (e.g. extractor needs an ore vein)" end

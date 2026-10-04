@@ -29,10 +29,14 @@ local function New(ClassName, Outer, Name)
     return StaticConstructObject(Cls, Outer, FName(Name))
 end
 
+-- Object names must be unique per mod instance: StaticConstructObject with the name of an existing
+-- object (left by a previous instance after a UE4SS auto-reload) reconstructs that object in place,
+-- which leaves the new panel's buttons dead.
+local Instance = string.format("%x%04x", os.time(), math.random(0, 0xFFFF))
 local Counter = 0
 local function Make(ClassName)
     Counter = Counter + 1
-    return New(ClassName, Panel.WidgetTree, PanelName .. "_" .. ClassName .. Counter)
+    return New(ClassName, Panel.WidgetTree, PanelName .. "_" .. Instance .. "_" .. ClassName .. Counter)
 end
 
 local function SetFontSize(TextWidget, Size)
@@ -91,8 +95,9 @@ end
 function UI.Create(PC, Position)
     UI.CleanupLeftovers()
     Buttons, Rows, Counter = {}, {}, 0
-    Panel = New("UserWidget", PC, PanelName)
-    Panel.WidgetTree = New("WidgetTree", Panel, PanelName .. "_Tree")
+    Instance = string.format("%x%04x", os.time(), math.random(0, 0xFFFF))
+    Panel = New("UserWidget", PC, PanelName .. "_" .. Instance)
+    Panel.WidgetTree = New("WidgetTree", Panel, PanelName .. "_" .. Instance .. "_Tree")
 
     local Canvas = Make("CanvasPanel")
     Panel.WidgetTree.RootWidget = Canvas
