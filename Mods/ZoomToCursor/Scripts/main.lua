@@ -3,13 +3,27 @@
 -- Description: Centers zoom on mouse cursor instead of screen center in The Crust
 -- =============================================================================
 
-local Config = require("config")
-local UEHelpers = require("UEHelpers")
+local Config = nil
+pcall(function()
+    Config = require("config")
+end)
+if not Config then
+    Config = {
+        ZoomInToCursor = true,
+        ZoomOutFromCursor = true,
+        ZoomStrengthMultiplier = 1.0,
+        ClampToMapBounds = true,
+        DebugLogging = true
+    }
+end
+
+local UEHelpers = nil
+pcall(function()
+    UEHelpers = require("UEHelpers")
+end)
 
 local function Log(Message)
-    if Config.DebugLogging then
-        print(string.format("[ZoomToCursor] %s\n", tostring(Message)))
-    end
+    print(string.format("[ZoomToCursor] %s\n", tostring(Message)))
 end
 
 -- Safely retrieve ray origin and direction from deprojected mouse cursor
@@ -27,68 +41,87 @@ local function GetRayFromDeproject(PC)
     return nil, nil
 end
 
--- Attempt to trace ground collision under cursor, falling back to math plane intersection
-local function GetTargetGroundPosition(PC, PawnLoc)
-    -- 1. Try LineTrace / Channel 11 (The Crust standard ground query channel)
-    local hit = {}
-    local hasHit = false
+-- Retrieve the world ground position under the cursor
+local function GetTargetGroundPosition(GodPawn, PC, PawnLoc)
+    -- 1. Try GodPawn:UpdateCursorLight() which is the game's built-in cursor calculation
+    local cursorLightPos = nil
     pcall(function()
-        hasHit = PC:GetHitResultUnderCursorByChannel(11, true, hit)
+        cursorLightPos = GodPawn:UpdateCursorLight()
     end)
-
-    if hasHit and hit.Location and hit.Location.X then
-        return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
+    if cursorLightPos and cursorLightPos.X and math.abs(cursorLightPos.X) > 0.01 then
+        return cursorLightPos.X, cursorLightPos.Y, cursorLightPos.Z or PawnLoc.Z
     end
 
-    -- Fallback: TraceTypeQuery1 (channel 0)
-    pcall(function()
-        hasHit = PC:GetHitResultUnderCursorByChannel(0, true, hit)
-    end)
-    if hasHit and hit.Location and hit.Location.X then
-        return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
-    end
+    -- 2. Try LineTrace on channel 11
+    if PC and PC:IsValid() then
+        local hit = {}
+        local hasHit = false
+        pcall(function()
+            hasHit = PC:GetHitResultUnderCursorByChannel(11, true, hit)
+        end)
+        if hasHit and hit.Location and hit.Location.X then
+            return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
+        end
 
-    -- 2. Fallback: Mathematical intersection of cursor ray with horizontal plane at PawnLoc.Z
-    local rayLoc, rayDir = GetRayFromDeproject(PC)
-    if rayLoc and rayDir then
-        local groundZ = PawnLoc.Z or 0.0
-        local t = (groundZ - rayLoc.Z) / rayDir.Z
-        if t > 0 then
-            local mx = rayLoc.X + rayDir.X * t
-            local my = rayLoc.Y + rayDir.Y * t
-            return mx, my, groundZ
+        -- Try LineTrace on channel 0
+        pcall(function()
+            hasHit = PC:GetHitResultUnderCursorByChannel(0, true, hit)
+        end)
+        if hasHit and hit.Location and hit.Location.X then
+            return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
+        end
+
+        -- 3. Mathematical intersection of cursor ray with horizontal plane at PawnLoc.Z
+        local rayLoc, rayDir = GetRayFromDeproject(PC)
+        if rayLoc and rayDir then
+            local groundZ = PawnLoc.Z or 0.0
+            local t = (groundZ - rayLoc.Z) / rayDir.Z
+            if t > 0 then
+                local mx = rayLoc.X + rayDir.X * t
+                local my = rayLoc.Y + rayDir.Y * t
+                return mx, my, groundZ
+            end
         end
     end
 
     return nil, nil, nil
 end
 
--- Hook GodPawn Zoom input event
+-- Hook GodPawn Zoom input axis event
 RegisterHook("/Game/Blueprints/Core/GodPawn.GodPawn_C:InpAxisEvt_Zoom_K2Node_InputAxisEvent_0", function(self, AxisValue)
     local success, err = pcall(function()
         local GodPawn = self:get()
         if not GodPawn or not GodPawn:IsValid() then return end
 
-        local Axis = AxisValue:get()
+        local Axis = 0.0
+        if AxisValue then
+            if type(AxisValue.get) == "function" then
+                Axis = AxisValue:get()
+            elseif type(AxisValue) == "number" then
+                Axis = AxisValue
+            end
+        end
+
         if not Axis or math.abs(Axis) < 0.001 then return end
 
-        -- Direction checks based on config
+        -- Direction checks based on configuration
         if Axis > 0 and not Config.ZoomInToCursor then return end
         if Axis < 0 and not Config.ZoomOutFromCursor then return end
 
         -- PlayerController reference
         local PC = GodPawn.PlayerControllerRef
         if not PC or not PC:IsValid() then
-            PC = UEHelpers.GetPlayerController()
+            if UEHelpers then
+                PC = UEHelpers.GetPlayerController()
+            end
         end
-        if not PC or not PC:IsValid() then return end
 
         -- Current Pawn world location
         local PawnLoc = GodPawn:K2_GetActorLocation()
         if not PawnLoc then return end
 
         -- Target world point under the mouse cursor
-        local TargetX, TargetY, TargetZ = GetTargetGroundPosition(PC, PawnLoc)
+        local TargetX, TargetY, TargetZ = GetTargetGroundPosition(GodPawn, PC, PawnLoc)
         if not TargetX or not TargetY then
             Log("Could not determine cursor world position.")
             return
@@ -157,13 +190,13 @@ RegisterHook("/Game/Blueprints/Core/GodPawn.GodPawn_C:InpAxisEvt_Zoom_K2Node_Inp
             GodPawn.DestinationPoint.Y = newY
         end
 
-        Log(string.format("Zoomed %s (Axis=%.1f): Shifted (%.1f, %.1f) towards cursor",
-            (Axis > 0 and "IN" or "OUT"), Axis, shiftX, shiftY))
+        Log(string.format("Zoom %s (Axis=%.1f): Shifted (%.1f, %.1f) to cursor (%.1f, %.1f)",
+            (Axis > 0 and "IN" or "OUT"), Axis, shiftX, shiftY, TargetX, TargetY))
     end)
 
-    if not success and Config.DebugLogging then
+    if not success then
         Log("Error during zoom hook: " .. tostring(err))
     end
 end)
 
-print("[ZoomToCursor] Mod initialized successfully. Hooked GodPawn zoom event.\n")
+Log("Mod initialized successfully. Hooked GodPawn zoom event.")
