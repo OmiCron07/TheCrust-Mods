@@ -144,7 +144,12 @@ function Game.LayerModules(Layer)
     return Result
 end
 
+-- Vanilla IsCopyAllowed requires IsBuildedByPlayer, which the wire tool never sets on the electric
+-- pillars it places (GodPlayer_PC "LMBForElectricWires"), so pillars are always allowed.
+local AlwaysCopyable = { MB_ElectricPillar_C = true }
+
 function Game.IsCopyAllowed(Module)
+    if AlwaysCopyable[Module:GetClass():GetFName():ToString()] then return true end
     local Out = {}
     local Ok = pcall(function() Module:IsCopyAllowed(Out) end)
     return Ok and Out["Return Value"] == true
