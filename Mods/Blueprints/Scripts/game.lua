@@ -22,6 +22,16 @@ function Game.PC()
     if Game.Valid(PC) then return PC end
 end
 
+function Game.IsLoading()
+    local GI = FindFirstOf("CrustGameInstance_C")
+    return Game.Valid(GI) and GI.LoadingInProcess == true
+end
+
+-- Identifies one gameplay world: the PC is recreated on every save load / level change.
+function Game.SessionKey(PC)
+    return PC:GetFullName()
+end
+
 function Game.Layer(PC)
     return PC.CurrentGameLayer
 end

@@ -205,11 +205,36 @@ end
 
 local RunPendingKeys -- Defined with the hotkey queue below.
 
+-- Forgets all UObject references of the previous world: touching them after a save load crashes.
+local function ForgetSession()
+    UI.Forget()
+    Visuals.Forget()
+    State.Mode, State.Anchor, State.Corner, State.Paste, State.Captured = "idle", nil, nil, nil, nil
+    State.Session = nil
+end
+
+local WarmupFrames = 60
+
 local function Tick()
     local PC = Game.PC()
-    if not PC then return end
+    if not PC or Game.IsLoading() then
+        if State.Session then ForgetSession() end
+        return
+    end
+    local Session = Game.SessionKey(PC)
+    if Session ~= State.Session then
+        ForgetSession()
+        State.Session, State.Warmup = Session, WarmupFrames
+        return
+    end
+    if State.Warmup > 0 then
+        State.Warmup = State.Warmup - 1
+        return
+    end
+
     RunPendingKeys(PC)
     if not UI.IsCreated() then
+        Visuals.CleanupLeftovers()
         UI.Create(PC, Config.PanelPosition)
         RefreshLibrary()
     end
@@ -314,14 +339,8 @@ Bind("RotateCounterClockwise", function(PC) Rotate(PC, 3) end)
 -- Game-thread tick: hooked on a GodPawn function the game calls every frame (see ZoomToCursor).
 local TickHookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"
 local TickHooked = false
-local CleanedUp = false
 
 local function OnFrame()
-    if not CleanedUp then
-        CleanedUp = true
-        pcall(UI.CleanupLeftovers)
-        pcall(Visuals.CleanupLeftovers)
-    end
     SafeTick()
 end
 

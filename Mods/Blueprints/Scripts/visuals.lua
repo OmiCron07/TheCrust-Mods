@@ -68,6 +68,11 @@ local function SetColor(Box, Color)
     end
 end
 
+-- Drops actor references without touching them (they may belong to a destroyed world).
+function Visuals.Forget()
+    Pool = {}
+end
+
 -- Destroys overlay actors left behind by a previous instance of the mod (hot reload).
 function Visuals.CleanupLeftovers()
     for _, A in ipairs(FindAllOf("StaticMeshActor") or {}) do

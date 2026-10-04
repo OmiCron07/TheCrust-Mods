@@ -82,7 +82,14 @@ function UI.CleanupLeftovers()
     end
 end
 
+-- Drops every widget reference without touching them (they may belong to a destroyed world).
+function UI.Forget()
+    Root, Panel, StatusText, SelectionText, NameBox, PageText = nil, nil, nil, nil, nil, nil
+    Buttons, Rows, Visible, PendingDelete = {}, {}, false, nil
+end
+
 function UI.Create(PC, Position)
+    UI.CleanupLeftovers()
     Buttons, Rows, Counter = {}, {}, 0
     Panel = New("UserWidget", PC, PanelName)
     Panel.WidgetTree = New("WidgetTree", Panel, PanelName .. "_Tree")
