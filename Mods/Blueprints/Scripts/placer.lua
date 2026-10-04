@@ -237,28 +237,59 @@ function Placer.BuildPlanned(M)
     return true
 end
 
--- Builds the holo belt sections covering Cells like the vanilla targeted build:
--- CheckForSufficientFunds, SubtractNecessaryFunds (pays credits), BuildSection.
+-- Builds the holo belt sections covering Cells with the vanilla build button logic
+-- (BP_ConveyorManager BuildAllSectionsWithMoney: pays the total cost, then BuildAllConveyors moves
+-- the holo sections to the built grid). Every other holo section is deferred meanwhile so only ours
+-- are built. BuildSection alone only flags the holo section as built without moving it, which draws
+-- a built belt and a holo belt on top of each other.
 function Placer.BuildBelts(CM, Cells, Report)
-    local Seen = {}
+    local Targets, Count = {}, 0
     for _, Cell in ipairs(Cells) do
         local S = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell)
-        if Game.Valid(S) and not S:IsBuilt() and not Seen[S:GetAddress()] then
-            Seen[S:GetAddress()] = true
-            local Funds = {}
-            CM:CheckForSufficientFunds(S, Funds)
-            if Funds.AreFundsSufficient then
-                CM:SubtractNecessaryFunds(S)
-                CM:BuildSection(S)
-                Report.SectionsBuilt = Report.SectionsBuilt + 1
-            else
-                Report.SectionsNoFunds = Report.SectionsNoFunds + 1
-            end
+        if Game.Valid(S) and not Targets[S:GetAddress()] then
+            Targets[S:GetAddress()] = S
+            Count = Count + 1
+        end
+    end
+    if Count == 0 then return end
+
+    local Deferred, Undeferred = {}, {}
+    CM.HoloSectionGrid.UniqueSections:ForEach(function(_, E)
+        local S = E:get()
+        if Game.Valid(S) and not Targets[S:GetAddress()] and not S:IsDeferred() then
+            S:SetDeferred(true)
+            Deferred[#Deferred + 1] = S
+        end
+    end)
+    for _, S in pairs(Targets) do
+        if S:IsDeferred() then
+            S:SetDeferred(false)
+            Undeferred[#Undeferred + 1] = S
+        end
+    end
+
+    CM:UpdateHoloSectionCosts()
+    local Out = {}
+    local Ok, Err = pcall(function() CM:BuildAllSectionsWithMoney(Out) end)
+    local Built = Ok and Out.IsSuccess == true
+
+    for _, S in ipairs(Deferred) do
+        if Game.Valid(S) then S:SetDeferred(false) end
+    end
+    if not Built then
+        for _, S in ipairs(Undeferred) do
+            if Game.Valid(S) then S:SetDeferred(true) end
         end
     end
     CM:UpdateHoloSectionCosts()
-end
 
+    if Built then
+        Report.SectionsBuilt = Report.SectionsBuilt + Count
+    else
+        Report.SectionsNoFunds = Report.SectionsNoFunds + Count
+        if not Ok then Report.Errors[#Report.Errors + 1] = "build belts: " .. tostring(Err) end
+    end
+end
 local function NewReport()
     return {
         Modules = 0, ModulesFailed = 0, Links = 0, BeltPieces = 0, BeltCellsBlocked = 0, Errors = {},
@@ -294,7 +325,7 @@ end
 function Placer.BuildSummary(R)
     local S = string.format("Construction started: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
     if R.NotBuilt > 0 then S = S .. string.format(" | %d modules kept planned (supply limit or locked)", R.NotBuilt) end
-    if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections lack credits", R.SectionsNoFunds) end
+    if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections not built (not enough credits)", R.SectionsNoFunds) end
     return S
 end
 
@@ -356,7 +387,7 @@ function Placer.Summary(R)
         S = S .. string.format(" | construction: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
     end
     if R.NotBuilt > 0 then S = S .. string.format(" | %d kept planned (supply/locked)", R.NotBuilt) end
-    if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections lack credits", R.SectionsNoFunds) end
+    if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections not built (not enough credits)", R.SectionsNoFunds) end
     if R.ModulesFailed > 0 then S = S .. string.format(" | %d modules blocked (%s)", R.ModulesFailed, R.Errors[1] or "?") end
     if R.BeltCellsBlocked > 0 then S = S .. string.format(" | %d belt cells blocked", R.BeltCellsBlocked) end
     return S
