@@ -62,6 +62,40 @@ end
 
 local LayerNames = { [0] = "Underground", [1] = "Orbital", [2] = "Crater" }
 
+-- Keybind cheat sheet shown in the panel, generated from the configured keys.
+local KeyDescriptions = {
+    { "TogglePanel", "Open / close this panel" },
+    { "SelectArea", "Select an area (drag left mouse)" },
+    { "CopySelection", "Copy the selection and paste it" },
+    { "PasteClipboard", "Paste the clipboard again" },
+    { "BuildSelection", "Build the ghosts of the selection" },
+    { "TogglePasteMode", "Paste as plan / build" },
+}
+
+local function KeyLabel(Binding)
+    if not Binding then return nil end
+    local Parts, Has = {}, {}
+    for _, M in ipairs(Binding.Modifiers or {}) do Has[M] = true end
+    for _, M in ipairs({ { "CONTROL", "Ctrl" }, { "SHIFT", "Shift" }, { "ALT", "Alt" } }) do
+        if Has[M[1]] then Parts[#Parts + 1] = M[2] end
+    end
+    Parts[#Parts + 1] = Binding.Key
+    return table.concat(Parts, "+")
+end
+
+local function KeyHelp()
+    local Lines = {}
+    for _, D in ipairs(KeyDescriptions) do
+        local Label = KeyLabel(Config.Keys[D[1]])
+        if Label then Lines[#Lines + 1] = { Label, D[2] } end
+    end
+    local CW, CCW = KeyLabel(Config.Keys.RotateClockwise), KeyLabel(Config.Keys.RotateCounterClockwise)
+    if CW or CCW then Lines[#Lines + 1] = { table.concat({ CW, CCW }, " / "), "Rotate while pasting" } end
+    Lines[#Lines + 1] = { "Left click", "Place ghosts / drag the selection" }
+    Lines[#Lines + 1] = { "Right click", "Clear selection / stop pasting" }
+    return Lines
+end
+
 local function ClearMode()
     State.Mode = "idle"
     State.Anchor, State.Corner, State.Paste = nil, nil, nil
@@ -269,7 +303,7 @@ local function Tick(Pawn)
     RunPendingKeys(PC)
     if not UI.IsCreated() then
         Visuals.CleanupLeftovers()
-        UI.Create(PC, Config.PanelPosition)
+        UI.Create(PC, Config.PanelPosition, KeyHelp())
         UI.SetPasteMode(State.PasteAsConstruction)
         RefreshLibrary()
     end
