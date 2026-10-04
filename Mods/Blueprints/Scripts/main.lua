@@ -97,7 +97,7 @@ local function StartPaste(PC, BP, Label)
 end
 
 local function SelectionBox()
-    return { State.Anchor[1], State.Anchor[2], State.Corner[1], State.Corner[2], Color = Colors.Selection, Height = 4, Inset = 0 }
+    return { State.Anchor[1], State.Anchor[2], State.Corner[1], State.Corner[2], Color = Colors.Selection, Height = 10, Outline = 0.15 }
 end
 
 local function DrawSelected(PC)
@@ -154,7 +154,6 @@ local function HandleAction(PC, Action, Index)
         local BP = State.Captured
         BP.Name, BP.Created, BP.Summary = Name, os.date("%Y-%m-%d %H:%M"), Capture.Summary(BP)
         table.insert(State.Library, 1, BP)
-        State.Captured = nil
         UI.SetName("")
         SaveLibrary()
         Notify("Saved blueprint '" .. Name .. "'")

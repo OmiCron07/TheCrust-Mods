@@ -14,8 +14,9 @@ Game.LayerCrater = 2
 -- ("Settled Module" is only set on placement, it stays false for modules loaded from a save.)
 local ExcludedStates = { [0] = true, [6] = true, [7] = true, [8] = true }
 
+-- UE4SS hands out null wrappers instead of nil: always check before touching an object.
 function Game.Valid(Obj)
-    return Obj ~= nil and Obj:IsValid()
+    return type(Obj) == "userdata" and Obj:IsValid()
 end
 
 function Game.PC()
