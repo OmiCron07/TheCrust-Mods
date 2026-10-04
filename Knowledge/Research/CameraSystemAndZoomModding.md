@@ -22,8 +22,10 @@ Document the camera controller architecture in The Crust and the implementation 
 - Proportional focal shift equation to keep world point $M$ stationary under cursor during zoom:
   $\Delta P = (M - P) \times \left(1 - \frac{L_{new}}{L_{old}}\right)$ where $L_{old}$ is current target arm length and $L_{new}$ is arm length post-step.
 - Map limits (`CraterCenterOffset`, `CraterRadius`) in `GodPawn_C` can bound camera displacement to prevent out-of-bounds drift.
+- Target Pinning: Re-deprojecting cursor on each wheel detent leads to feedback drift as camera motion shifts the ground under cursor; pinning initial ground target across scroll detents (<0.5s timeout) guarantees a straight trajectory to the targeted object.
 
 ## Pitfalls & Dead Ends
+- UE4SS UFunction hooks: For Blueprint script functions (`/Game/...`), only the primary `Callback` parameter in `RegisterHook` executes reliably. Providing a secondary `PostCallback` parameter will result in the post-callback being ignored or never called.
 - Modifying bytecode directly in cooked `GodPawn.uasset` risks struct offset corruption and engine desync; UE4SS UFunction hooking provides safe, non-destructive execution.
 - UE4SS `UE4SS-settings.ini` defaulted to `MajorVersion = 5` and `MinorVersion = 6` in some templates; must be explicitly configured to `MajorVersion = 4` and `MinorVersion = 27` for The Crust (UE 4.27.2) to avoid crash on startup.
 - Unreal `InputAxis` events execute every frame with `AxisValue = 0.0` when idle; hook callbacks must immediately return when `math.abs(AxisValue) < 0.001`.

@@ -29,10 +29,14 @@ local function Log(Message)
     end
 end
 
+-- Pinned target position for the active zoom session
+local PinnedTargetX = nil
+local PinnedTargetY = nil
+local LastZoomInTime = 0.0
+
 -- Interpolation target for smooth camera translation
 local TargetPawnX = nil
 local TargetPawnY = nil
-local LastZoomTime = nil
 
 -- Retrieve accurate 3D ground location under mouse cursor
 local function GetCursorGroundPosition(GodPawn, PC, PawnLoc)
@@ -115,19 +119,35 @@ local function OnZoomInput(self, AxisValue)
 
     -- ZOOM OUT (Axis < 0): Keep zoom centered on screen (vanilla behavior)
     if Axis < 0 then
+        PinnedTargetX = nil
+        PinnedTargetY = nil
         TargetPawnX = nil
         TargetPawnY = nil
         return
     end
 
-    -- ZOOM IN (Axis > 0): Shift TargetPawn towards cursor
-    local PC = GodPawn.PlayerControllerRef
-    if not PC or not PC:IsValid() then
-        if UEHelpers then PC = UEHelpers.GetPlayerController() end
+    -- ZOOM IN (Axis > 0): Pin initial cursor ground location throughout gesture
+    local now = os.clock()
+    local isNewGesture = (not PinnedTargetX) or (not PinnedTargetY) or (now - LastZoomInTime > 0.5)
+
+    if isNewGesture then
+        local PC = GodPawn.PlayerControllerRef
+        if not PC or not PC:IsValid() then
+            if UEHelpers then PC = UEHelpers.GetPlayerController() end
+        end
+
+        local cursorX, cursorY, method = GetCursorGroundPosition(GodPawn, PC, PawnLoc)
+        if not cursorX or not cursorY then return end
+
+        PinnedTargetX = cursorX
+        PinnedTargetY = cursorY
+        TargetPawnX = PawnLoc.X
+        TargetPawnY = PawnLoc.Y
+
+        Log(string.format("New Zoom IN session pinned to: (%.1f, %.1f) via %s", PinnedTargetX, PinnedTargetY, method))
     end
 
-    local cursorX, cursorY, method = GetCursorGroundPosition(GodPawn, PC, PawnLoc)
-    if not cursorX or not cursorY then return end
+    if not PinnedTargetX or not PinnedTargetY then return end
 
     local LongArm = GodPawn.LongArm
     local armLength = (LongArm and LongArm:IsValid() and LongArm.TargetArmLength) or 4000.0
@@ -140,17 +160,16 @@ local function OnZoomInput(self, AxisValue)
     if fraction > 0.35 then fraction = 0.35 end
     if fraction < 0.08 then fraction = 0.08 end
 
-    -- Base target position from current Pawn position if not yet set or timed out
     if not TargetPawnX then TargetPawnX = PawnLoc.X end
     if not TargetPawnY then TargetPawnY = PawnLoc.Y end
 
-    -- Calculate displacement towards cursor
-    local shiftX = (cursorX - TargetPawnX) * fraction
-    local shiftY = (cursorY - TargetPawnY) * fraction
+    -- Calculate displacement towards PINNED target (consistent straight-line trajectory)
+    local shiftX = (PinnedTargetX - TargetPawnX) * fraction
+    local shiftY = (PinnedTargetY - TargetPawnY) * fraction
 
     TargetPawnX = TargetPawnX + shiftX
     TargetPawnY = TargetPawnY + shiftY
-    LastZoomTime = os.clock()
+    LastZoomInTime = now
 
     -- Map boundary clamping
     if Config.ClampToMapBounds then
@@ -168,8 +187,8 @@ local function OnZoomInput(self, AxisValue)
         end
     end
 
-    Log(string.format("Zoom IN [%s]: Target (%.1f, %.1f) shifted by (%.1f, %.1f) to cursor (%.1f, %.1f)",
-        method, TargetPawnX, TargetPawnY, shiftX, shiftY, cursorX, cursorY))
+    Log(string.format("Zoom IN: Target (%.1f, %.1f) shifted by (%.1f, %.1f) towards pinned (%.1f, %.1f)",
+        TargetPawnX, TargetPawnY, shiftX, shiftY, PinnedTargetX, PinnedTargetY))
 end
 
 -- -----------------------------------------------------------------------------
@@ -178,10 +197,13 @@ end
 local function OnArmLenght(self, DeltaTimeParm)
     if not TargetPawnX or not TargetPawnY then return end
 
-    -- Safety timeout: if no zoom input for > 1.2 seconds, reset target
-    if LastZoomTime and (os.clock() - LastZoomTime > 1.2) then
+    local now = os.clock()
+    -- Safety timeout: if no zoom input for > 1.0 second, reset all targets
+    if LastZoomInTime and (now - LastZoomInTime > 1.0) then
         TargetPawnX = nil
         TargetPawnY = nil
+        PinnedTargetX = nil
+        PinnedTargetY = nil
         return
     end
 
@@ -195,7 +217,7 @@ local function OnArmLenght(self, DeltaTimeParm)
     local diffY = TargetPawnY - PawnLoc.Y
     local distSq = diffX * diffX + diffY * diffY
 
-    -- Once arrived within threshold, finish interpolation
+    -- Once arrived within threshold, finish this interpolation step
     if distSq < 16.0 then
         TargetPawnX = nil
         TargetPawnY = nil
