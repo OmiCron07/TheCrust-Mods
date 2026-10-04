@@ -11,7 +11,7 @@ end)
 if not Config then
     Config = {
         ZoomInToCursor = true,
-        ZoomOutFromCursor = false, -- false = zoom out from center as requested
+        ZoomOutFromCursor = false,
         ZoomStrengthMultiplier = 1.0,
         ClampToMapBounds = true,
         DebugLogging = true
@@ -29,206 +29,171 @@ local function Log(Message)
     end
 end
 
--- State variables for smooth per-frame zoom tracking
-local IsZoomingIn = false
-local TargetCursorX = 0.0
-local TargetCursorY = 0.0
-local PrevArmLength = 0.0
-local IdleFrameCount = 0
+-- Interpolation target for smooth camera translation
+local TargetPawnX = nil
+local TargetPawnY = nil
 
--- Safely retrieve ray origin and direction from deprojected mouse cursor
-local function GetRayFromDeproject(PC)
-    local outLoc = {}
-    local outDir = {}
-    local res1, res2, res3 = PC:DeprojectMousePositionToWorld(outLoc, outDir)
+-- Retrieve accurate 3D ground location under mouse cursor
+local function GetCursorGroundPosition(GodPawn, PC, PawnLoc)
+    -- 1. Analytical Ray-Plane Intersection (accurate at any altitude)
+    if PC and PC:IsValid() then
+        local outLoc = {}
+        local outDir = {}
+        local res1, res2, res3 = PC:DeprojectMousePositionToWorld(outLoc, outDir)
 
-    local loc = (outLoc and outLoc.X and outLoc) or (type(res2) == "table" and res2.X and res2) or (type(res1) == "table" and res1.X and res1)
-    local dir = (outDir and outDir.X and outDir) or (type(res3) == "table" and res3.X and res3) or (type(res2) == "table" and res2.Z and res2)
+        local loc = (outLoc and outLoc.X and outLoc) or (type(res2) == "table" and res2.X and res2) or (type(res1) == "table" and res1.X and res1)
+        local dir = (outDir and outDir.X and outDir) or (type(res3) == "table" and res3.X and res3) or (type(res2) == "table" and res2.Z and res2)
 
-    if loc and dir and loc.X and dir.Z and math.abs(dir.Z) > 0.0001 then
-        return loc, dir
+        if loc and dir and loc.X and dir.Z and math.abs(dir.Z) > 0.0001 then
+            local groundZ = PawnLoc.Z or 0.0
+            local t = (groundZ - loc.Z) / dir.Z
+            if t > 0 then
+                return loc.X + dir.X * t, loc.Y + dir.Y * t
+            end
+        end
+
+        -- 2. LineTrace on channel 11
+        local hit = {}
+        local hasHit = false
+        pcall(function() hasHit = PC:GetHitResultUnderCursorByChannel(11, true, hit) end)
+        if hasHit and hit.Location and hit.Location.X then
+            return hit.Location.X, hit.Location.Y
+        end
     end
+
+    -- 3. Game's UpdateCursorLight fallback
+    local lightPos = nil
+    pcall(function() lightPos = GodPawn:UpdateCursorLight() end)
+    if lightPos and lightPos.X and math.abs(lightPos.X) > 0.01 then
+        return lightPos.X, lightPos.Y
+    end
+
     return nil, nil
 end
 
--- Retrieve the world ground position under the cursor
-local function GetTargetGroundPosition(GodPawn, PC, PawnLoc)
-    -- 1. Try GodPawn:UpdateCursorLight() which is the game's built-in cursor calculation
-    local cursorLightPos = nil
-    pcall(function()
-        cursorLightPos = GodPawn:UpdateCursorLight()
-    end)
-    if cursorLightPos and cursorLightPos.X and math.abs(cursorLightPos.X) > 0.01 then
-        return cursorLightPos.X, cursorLightPos.Y, cursorLightPos.Z or PawnLoc.Z
-    end
-
-    -- 2. Try LineTrace on channel 11 (The Crust standard ground query channel)
-    if PC and PC:IsValid() then
-        local hit = {}
-        local hasHit = false
-        pcall(function()
-            hasHit = PC:GetHitResultUnderCursorByChannel(11, true, hit)
-        end)
-        if hasHit and hit.Location and hit.Location.X then
-            return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
-        end
-
-        -- Try LineTrace on channel 0 (Visibility)
-        pcall(function()
-            hasHit = PC:GetHitResultUnderCursorByChannel(0, true, hit)
-        end)
-        if hasHit and hit.Location and hit.Location.X then
-            return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
-        end
-
-        -- 3. Fallback: Mathematical intersection of cursor ray with horizontal plane at PawnLoc.Z
-        local rayLoc, rayDir = GetRayFromDeproject(PC)
-        if rayLoc and rayDir then
-            local groundZ = PawnLoc.Z or 0.0
-            local t = (groundZ - rayLoc.Z) / rayDir.Z
-            if t > 0 then
-                local mx = rayLoc.X + rayDir.X * t
-                local my = rayLoc.Y + rayDir.Y * t
-                return mx, my, groundZ
-            end
-        end
-    end
-
-    return nil, nil, nil
-end
-
 -- -----------------------------------------------------------------------------
--- 1. Zoom Input Event: Capture target cursor position on Zoom IN only
+-- Zoom Input Event: Calculate target position on Zoom IN
 -- -----------------------------------------------------------------------------
 local function OnZoomInput(self, AxisValue)
-    local success, err = pcall(function()
-        local GodPawn = self:get()
-        if not GodPawn or not GodPawn:IsValid() then return end
-
-        local Axis = 0.0
-        if AxisValue then
-            if type(AxisValue.get) == "function" then
-                Axis = AxisValue:get()
-            elseif type(AxisValue) == "number" then
-                Axis = AxisValue
-            end
-        end
-
-        -- Ignore zero input (idle frames)
-        if not Axis or math.abs(Axis) < 0.001 then return end
-
-        -- ZOOM OUT (Axis < 0): Zoom out from screen center (vanilla behavior)
-        if Axis < 0 then
-            IsZoomingIn = false
-            -- Do not modify pawn location; let game zoom out centered
-            return
-        end
-
-        -- ZOOM IN (Axis > 0): Capture cursor target for smooth tracking
-        local PC = GodPawn.PlayerControllerRef
-        if not PC or not PC:IsValid() then
-            if UEHelpers then PC = UEHelpers.GetPlayerController() end
-        end
-
-        local PawnLoc = GodPawn:K2_GetActorLocation()
-        if not PawnLoc then return end
-
-        local curX, curY = GetTargetGroundPosition(GodPawn, PC, PawnLoc)
-        if curX and curY then
-            TargetCursorX = curX
-            TargetCursorY = curY
-            IsZoomingIn = true
-            IdleFrameCount = 0
-
-            local LongArm = GodPawn.LongArm
-            if LongArm and LongArm:IsValid() then
-                PrevArmLength = LongArm.TargetArmLength
-            end
-
-            Log(string.format("Zoom IN triggered: Target cursor world position (%.1f, %.1f)", TargetCursorX, TargetCursorY))
-        end
-    end)
-
-    if not success then
-        Log("Error in OnZoomInput: " .. tostring(err))
-    end
-end
-
--- -----------------------------------------------------------------------------
--- 2. ArmLenght Hook: Synchronously shift pawn position each frame as arm zooms
--- -----------------------------------------------------------------------------
-local function OnArmLenghtPre(self)
     local GodPawn = self:get()
-    if GodPawn and GodPawn:IsValid() and GodPawn.LongArm and GodPawn.LongArm:IsValid() then
-        PrevArmLength = GodPawn.LongArm.TargetArmLength
+    if not GodPawn or not GodPawn:IsValid() then return end
+
+    local Axis = 0.0
+    if AxisValue then
+        if type(AxisValue.get) == "function" then
+            Axis = AxisValue:get()
+        elseif type(AxisValue) == "number" then
+            Axis = AxisValue
+        end
     end
+
+    -- Ignore idle frames
+    if not Axis or math.abs(Axis) < 0.001 then return end
+
+    local PawnLoc = GodPawn:K2_GetActorLocation()
+    if not PawnLoc then return end
+
+    -- ZOOM OUT (Axis < 0): Keep zoom centered on screen (vanilla behavior)
+    if Axis < 0 then
+        TargetPawnX = PawnLoc.X
+        TargetPawnY = PawnLoc.Y
+        return
+    end
+
+    -- ZOOM IN (Axis > 0): Shift TargetPawn towards cursor
+    local PC = GodPawn.PlayerControllerRef
+    if not PC or not PC:IsValid() then
+        if UEHelpers then PC = UEHelpers.GetPlayerController() end
+    end
+
+    local cursorX, cursorY = GetCursorGroundPosition(GodPawn, PC, PawnLoc)
+    if not cursorX or not cursorY then return end
+
+    local LongArm = GodPawn.LongArm
+    local armLength = (LongArm and LongArm:IsValid() and LongArm.TargetArmLength) or 4000.0
+    if armLength < 300.0 then armLength = 300.0 end
+
+    -- Proportional zoom fraction per wheel notch
+    local zoomStep = math.abs(GodPawn["Zoom Step"] or 500.0)
+    if zoomStep < 100.0 then zoomStep = 500.0 end
+    local fraction = (zoomStep / armLength) * (Config.ZoomStrengthMultiplier or 1.0)
+    if fraction > 0.20 then fraction = 0.20 end
+    if fraction < 0.04 then fraction = 0.04 end
+
+    -- Base target position from current Pawn position if not yet set
+    if not TargetPawnX then TargetPawnX = PawnLoc.X end
+    if not TargetPawnY then TargetPawnY = PawnLoc.Y end
+
+    -- Calculate displacement towards cursor
+    local shiftX = (cursorX - TargetPawnX) * fraction
+    local shiftY = (cursorY - TargetPawnY) * fraction
+
+    TargetPawnX = TargetPawnX + shiftX
+    TargetPawnY = TargetPawnY + shiftY
+
+    -- Map boundary clamping
+    if Config.ClampToMapBounds then
+        local centerOffset = GodPawn.CraterCenterOffset
+        local radius = GodPawn.CraterRadius
+        if centerOffset and radius and radius > 0 then
+            local distSq = (TargetPawnX - centerOffset)^2 + (TargetPawnY - centerOffset)^2
+            local maxDist = radius * 1.5
+            if distSq > (maxDist * maxDist) then
+                local dist = math.sqrt(distSq)
+                local scale = maxDist / dist
+                TargetPawnX = centerOffset + (TargetPawnX - centerOffset) * scale
+                TargetPawnY = centerOffset + (TargetPawnY - centerOffset) * scale
+            end
+        end
+    end
+
+    Log(string.format("Zoom IN: Target shifted by (%.1f, %.1f) towards cursor (%.1f, %.1f)", shiftX, shiftY, cursorX, cursorY))
 end
 
-local function OnArmLenghtPost(self)
-    if not IsZoomingIn then return end
+-- -----------------------------------------------------------------------------
+-- ArmLenght Post Hook: Smoothly glide Pawn towards TargetPawn every frame
+-- -----------------------------------------------------------------------------
+local function OnArmLenghtPost(self, DeltaTimeParm)
+    if not TargetPawnX or not TargetPawnY then return end
 
-    local success, err = pcall(function()
-        local GodPawn = self:get()
-        if not GodPawn or not GodPawn:IsValid() then return end
+    local GodPawn = self:get()
+    if not GodPawn or not GodPawn:IsValid() then return end
 
-        local LongArm = GodPawn.LongArm
-        if not LongArm or not LongArm:IsValid() then return end
+    local PawnLoc = GodPawn:K2_GetActorLocation()
+    if not PawnLoc then return end
 
-        local currentArm = LongArm.TargetArmLength
-        local deltaArm = PrevArmLength - currentArm
+    local diffX = TargetPawnX - PawnLoc.X
+    local diffY = TargetPawnY - PawnLoc.Y
+    local distSq = diffX * diffX + diffY * diffY
 
-        -- If arm is not getting shorter, check if we finished zooming
-        if deltaArm <= 0.05 then
-            IdleFrameCount = IdleFrameCount + 1
-            if IdleFrameCount > 5 then
-                IsZoomingIn = false
-            end
-            return
+    -- Once arrived within threshold, finish interpolation
+    if distSq < 4.0 then
+        return
+    end
+
+    local dt = 0.016
+    if DeltaTimeParm then
+        if type(DeltaTimeParm.get) == "function" then
+            local v = DeltaTimeParm:get()
+            if v and v > 0.0001 and v < 0.2 then dt = v end
+        elseif type(DeltaTimeParm) == "number" and DeltaTimeParm > 0.0001 and DeltaTimeParm < 0.2 then
+            dt = DeltaTimeParm
         end
+    end
 
-        IdleFrameCount = 0
+    -- Smooth exponential ease-out matching game camera interpolation (speed 12)
+    local interpSpeed = 12.0
+    local alpha = 1.0 - math.exp(-interpSpeed * dt)
+    if alpha > 1.0 then alpha = 1.0 end
 
-        local PawnLoc = GodPawn:K2_GetActorLocation()
-        if not PawnLoc then return end
+    local newX = PawnLoc.X + diffX * alpha
+    local newY = PawnLoc.Y + diffY * alpha
 
-        -- Proportional smooth shift fraction for this single frame
-        local factor = (deltaArm / currentArm) * (Config.ZoomStrengthMultiplier or 1.0)
-        -- Safety cap to prevent any possible teleportation spikes
-        if factor > 0.08 then factor = 0.08 end
+    GodPawn:K2_SetActorLocation({ X = newX, Y = newY, Z = PawnLoc.Z }, false, {}, false)
 
-        local shiftX = (TargetCursorX - PawnLoc.X) * factor
-        local shiftY = (TargetCursorY - PawnLoc.Y) * factor
-
-        local newX = PawnLoc.X + shiftX
-        local newY = PawnLoc.Y + shiftY
-
-        -- Boundary clamping if enabled
-        if Config.ClampToMapBounds then
-            local centerOffset = GodPawn.CraterCenterOffset
-            local radius = GodPawn.CraterRadius
-            if centerOffset and radius and radius > 0 then
-                local distSq = (newX - centerOffset)^2 + (newY - centerOffset)^2
-                local maxDist = radius * 1.5
-                if distSq > (maxDist * maxDist) then
-                    local dist = math.sqrt(distSq)
-                    local scale = maxDist / dist
-                    newX = centerOffset + (newX - centerOffset) * scale
-                    newY = centerOffset + (newY - centerOffset) * scale
-                end
-            end
-        end
-
-        -- Smoothly move pawn for this frame
-        GodPawn:K2_SetActorLocation({ X = newX, Y = newY, Z = PawnLoc.Z }, false, {}, false)
-
-        if GodPawn.DestinationPoint then
-            GodPawn.DestinationPoint.X = newX
-            GodPawn.DestinationPoint.Y = newY
-        end
-    end)
-
-    if not success then
-        Log("Error in OnArmLenghtPost: " .. tostring(err))
+    if GodPawn.DestinationPoint then
+        GodPawn.DestinationPoint.X = newX
+        GodPawn.DestinationPoint.Y = newY
     end
 end
 
@@ -246,57 +211,27 @@ local function TryRegisterHooks()
     if not ZoomHookRegistered then
         local ufuncZoom = StaticFindObject(ZoomHookPath)
         if ufuncZoom and ufuncZoom:IsValid() then
-            local s, e = pcall(function()
-                RegisterHook(ZoomHookPath, OnZoomInput)
-            end)
-            if s then
-                ZoomHookRegistered = true
-                Log("Successfully registered hook on GodPawn zoom input event!")
-            end
+            RegisterHook(ZoomHookPath, OnZoomInput)
+            ZoomHookRegistered = true
+            Log("Hooked zoom input.")
         end
     end
 
     if not ArmHookRegistered then
         local ufuncArm = StaticFindObject(ArmHookPath)
         if ufuncArm and ufuncArm:IsValid() then
-            local s, e = pcall(function()
-                RegisterHook(ArmHookPath, OnArmLenghtPre, OnArmLenghtPost)
-            end)
-            if s then
-                ArmHookRegistered = true
-                Log("Successfully registered hook on GodPawn ArmLenght interpolation!")
-            end
+            RegisterHook(ArmHookPath, function() end, OnArmLenghtPost)
+            ArmHookRegistered = true
+            Log("Hooked ArmLenght.")
         end
     end
 
     return ZoomHookRegistered and ArmHookRegistered
 end
 
--- 1. Try immediate registration
 TryRegisterHooks()
+pcall(function() RegisterHook("/Script/Engine.PlayerController:ClientRestart", function() TryRegisterHooks() end) end)
+pcall(function() NotifyOnNewObject("GodPawn_C", function() TryRegisterHooks() end) end)
+pcall(function() LoopAsync(1000, function() return TryRegisterHooks() end) end)
 
--- 2. Hook player controller restart (fired when player spawns/possesses pawn)
-pcall(function()
-    RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(PC, NewPawn)
-        TryRegisterHooks()
-    end)
-end)
-
--- 3. Notify when GodPawn object is created
-pcall(function()
-    NotifyOnNewObject("GodPawn_C", function(GodPawn)
-        TryRegisterHooks()
-    end)
-end)
-
--- 4. Polling fallback via LoopAsync until both hooks registered
-pcall(function()
-    LoopAsync(1000, function()
-        if TryRegisterHooks() then
-            return true -- Stops loop once all hooks are active
-        end
-        return false -- Keeps polling
-    end)
-end)
-
-Log("ZoomToCursor mod loaded. Listening for GodPawn...")
+Log("Smooth ZoomToCursor mod active.")
