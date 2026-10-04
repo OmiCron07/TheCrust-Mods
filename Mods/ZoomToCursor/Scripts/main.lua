@@ -52,7 +52,7 @@ local function GetTargetGroundPosition(GodPawn, PC, PawnLoc)
         return cursorLightPos.X, cursorLightPos.Y, cursorLightPos.Z or PawnLoc.Z
     end
 
-    -- 2. Try LineTrace on channel 11
+    -- 2. Try LineTrace on channel 11 (The Crust standard ground channel)
     if PC and PC:IsValid() then
         local hit = {}
         local hasHit = false
@@ -63,7 +63,7 @@ local function GetTargetGroundPosition(GodPawn, PC, PawnLoc)
             return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
         end
 
-        -- Try LineTrace on channel 0
+        -- Try LineTrace on channel 0 (Visibility)
         pcall(function()
             hasHit = PC:GetHitResultUnderCursorByChannel(0, true, hit)
         end)
@@ -71,7 +71,7 @@ local function GetTargetGroundPosition(GodPawn, PC, PawnLoc)
             return hit.Location.X, hit.Location.Y, hit.Location.Z or PawnLoc.Z
         end
 
-        -- 3. Mathematical intersection of cursor ray with horizontal plane at PawnLoc.Z
+        -- 3. Fallback: Mathematical intersection of cursor ray with horizontal plane at PawnLoc.Z
         local rayLoc, rayDir = GetRayFromDeproject(PC)
         if rayLoc and rayDir then
             local groundZ = PawnLoc.Z or 0.0
@@ -87,8 +87,8 @@ local function GetTargetGroundPosition(GodPawn, PC, PawnLoc)
     return nil, nil, nil
 end
 
--- Hook GodPawn Zoom input axis event
-RegisterHook("/Game/Blueprints/Core/GodPawn.GodPawn_C:InpAxisEvt_Zoom_K2Node_InputAxisEvent_0", function(self, AxisValue)
+-- Hook callback for GodPawn Zoom input event
+local function OnZoomEvent(self, AxisValue)
     local success, err = pcall(function()
         local GodPawn = self:get()
         if not GodPawn or not GodPawn:IsValid() then return end
@@ -197,6 +197,60 @@ RegisterHook("/Game/Blueprints/Core/GodPawn.GodPawn_C:InpAxisEvt_Zoom_K2Node_Inp
     if not success then
         Log("Error during zoom hook: " .. tostring(err))
     end
+end
+
+-- =============================================================================
+-- Deferred Hook Registration System
+-- Ensures we only register the hook once GodPawn_C is actually loaded in memory
+-- =============================================================================
+
+local HookRegistered = false
+local HookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:InpAxisEvt_Zoom_K2Node_InputAxisEvent_0"
+
+local function TryRegisterZoomHook()
+    if HookRegistered then return true end
+
+    local ufunc = StaticFindObject(HookPath)
+    if ufunc and ufunc:IsValid() then
+        local success, err = pcall(function()
+            RegisterHook(HookPath, OnZoomEvent)
+        end)
+        if success then
+            HookRegistered = true
+            Log("Successfully registered hook on GodPawn zoom event!")
+            return true
+        else
+            Log("RegisterHook attempted but returned error: " .. tostring(err))
+        end
+    end
+    return false
+end
+
+-- 1. Try immediate registration (in case GodPawn is already in memory)
+TryRegisterZoomHook()
+
+-- 2. Hook player controller restart (fired when player spawns/possesses a pawn)
+pcall(function()
+    RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(PC, NewPawn)
+        TryRegisterZoomHook()
+    end)
 end)
 
-Log("Mod initialized successfully. Hooked GodPawn zoom event.")
+-- 3. Notify when a GodPawn object is created
+pcall(function()
+    NotifyOnNewObject("GodPawn_C", function(GodPawn)
+        TryRegisterZoomHook()
+    end)
+end)
+
+-- 4. Polling fallback via LoopAsync until hooked
+pcall(function()
+    LoopAsync(1000, function()
+        if TryRegisterZoomHook() then
+            return true -- Stops the loop once hook is registered
+        end
+        return false -- Keeps polling
+    end)
+end)
+
+Log("Mod script loaded. Waiting for GodPawn asset to be loaded by game...")
