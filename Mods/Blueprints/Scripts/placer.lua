@@ -28,7 +28,18 @@ local function CanSettle(PC, Layer, M)
     M:RecalculatePerimeterAroundUndercells({})
     local Cpp = {}
     M:CPPPlacementCheck(Cpp)
-    if not Cpp.Yes then return false, "invalid placement" end
+    if not Cpp.Yes then
+        -- Modules with special placement rules (e.g. deep ore extractors always return false) are
+        -- validated by their CheckIfCanSettleModuleAccordingToUndermoduleCells override instead
+        -- (extractors: enough cells on a mineral vein), then only the module count limit applies.
+        local Special = {}
+        M:CheckIfCanSettleModuleAccordingToUndermoduleCells(Special)
+        if not Special.Success then return false, "special placement rule (e.g. extractor needs an ore vein)" end
+        local Count = {}
+        PC:CheckIfCanSettleCuzOfThisTypeModulesCount(M, Count)
+        if Count.Can == false then return false, "module count limit" end
+        return true
+    end
     if Layer == Game.LayerUnderground then
         local Soil = {}
         M["Check Intersection Of Perimeter Cells and Soil"](M, Soil)
