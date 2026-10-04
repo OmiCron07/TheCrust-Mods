@@ -17,6 +17,7 @@ local Grid = require("grid")
 local Game = require("game")
 local Capture = require("capture")
 local Placer = require("placer")
+local Preview = require("preview")
 local Visuals = require("visuals")
 local UI = require("ui")
 local Storage = require("storage")
@@ -28,6 +29,9 @@ local LibraryFile = ModDir .. "\\library.lua"
 local Colors = {
     Selection = { R = 0.15, G = 0.45, B = 1.0, A = 0.22 },
     Module = { R = 0.25, G = 0.9, B = 1.0, A = 0.35 },
+    Invalid = { R = 1.0, G = 0.15, B = 0.1, A = 1 },
+    VeinOn = { R = 0.2, G = 1.0, B = 0.3, A = 1 },
+    VeinOff = { R = 1.0, G = 0.3, B = 0.1, A = 1 },
     Belt = { R = 1.0, G = 0.75, B = 0.15, A = 0.55 },
 }
 
@@ -61,6 +65,7 @@ local function ClearMode()
     State.Mode = "idle"
     State.Anchor, State.Corner, State.Paste = nil, nil, nil
     Visuals.Hide()
+    Preview.Stop()
 end
 
 -- Prepares per-mode layer data; fails on the orbital layer.
@@ -191,14 +196,26 @@ local function TickPasting(PC, LeftPressed, RightPressed)
     local Cell = Game.CursorCell(PC)
     if not Cell then return end
     local OR, OC = Grid.ToRowCol(Cell)
+    if not P.PreviewStarted then
+        P.PreviewStarted = true
+        Preview.Start(PC, State.Layer, P.BP, OR, OC)
+    end
     if Cell ~= P.Cell or P.Dirty then
         P.Cell, P.Dirty = Cell, false
-        Visuals.Show(PC, State.Geo, Visuals.BlueprintBoxes(P.BP, OR, OC, P.Turns, Colors.Module, Colors.Belt))
+        local Valid, Veins = Preview.Evaluate(State.Geo, P.BP, OR, OC, P.Turns)
+        local Boxes = Visuals.BlueprintBoxes(P.BP, OR, OC, P.Turns, Colors.Module, Colors.Belt, Valid, Colors.Invalid)
+        for _, V in ipairs(Veins) do
+            local R, C = Grid.ToRowCol(V[1])
+            Boxes[#Boxes + 1] = { R, C, R, C, Color = V[2] and Colors.VeinOn or Colors.VeinOff, Height = 16, Inset = 0.3 }
+        end
+        Visuals.Show(PC, State.Geo, Boxes)
     end
     if LeftPressed and not UI.IsHovered() then
         local Report = Placer.Paste(PC, State.Layer, P.BP, Cell, P.Turns, Config)
         for _, E in ipairs(Report.Errors) do Log(E) end
         Notify(Placer.Summary(Report))
+        Preview.Refresh(PC, State.Layer)
+        P.Dirty = true
     end
 end
 
@@ -208,6 +225,7 @@ local RunPendingKeys -- Defined with the hotkey queue below.
 local function ForgetSession()
     UI.Forget()
     Visuals.Forget()
+    Preview.Forget()
     State.Mode, State.Anchor, State.Corner, State.Paste, State.Captured = "idle", nil, nil, nil, nil
     State.Session = nil
 end

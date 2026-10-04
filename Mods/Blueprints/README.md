@@ -16,6 +16,13 @@ between pasted modules. Build them afterwards with the normal game buttons.
 | Left click | While pasting: place the ghosts (stay in paste mode) |
 | Right click | Cancel the selection / stop pasting |
 
+### Paste preview
+- Cyan outline: the module can be placed there; red outline: it cannot (overlap, undug ground,
+  or the module's own rule).
+- Extractors: their active cells are shown as small squares, green on an ore vein, red elsewhere;
+  the outline turns cyan once enough cells cover a vein (vanilla rule).
+- Orange strips: conveyor belts (cells already used are skipped when pasting).
+
 The panel offers the same actions plus the library: name a selection and click **Save selection**,
 then **Place**, **Rename** (uses the name box) or **Delete** (click twice) a saved blueprint.
 

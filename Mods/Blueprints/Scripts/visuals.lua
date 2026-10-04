@@ -141,9 +141,11 @@ function Visuals.Hide()
 end
 
 -- Builds preview boxes of a blueprint placed on (OR, OC) rotated by Turns.
-function Visuals.BlueprintBoxes(BP, OR, OC, Turns, ModuleColor, BeltColor)
+-- Valid (optional): per module index validity; false draws the module with InvalidColor.
+function Visuals.BlueprintBoxes(BP, OR, OC, Turns, ModuleColor, BeltColor, Valid, InvalidColor)
     local Boxes = {}
-    for _, Mod in ipairs(BP.Modules) do
+    for i, Mod in ipairs(BP.Modules) do
+        local Color = (Valid and Valid[i] == false) and InvalidColor or ModuleColor
         local R0, C0, R1, C1
         for _, Cell in ipairs(Mod.Cells) do
             local DR, DC = Grid.Rotate(Cell[1], Cell[2], Turns)
@@ -151,7 +153,7 @@ function Visuals.BlueprintBoxes(BP, OR, OC, Turns, ModuleColor, BeltColor)
             R0, C0 = math.min(R0 or R, R), math.min(C0 or C, C)
             R1, C1 = math.max(R1 or R, R), math.max(C1 or C, C)
         end
-        if R0 then Boxes[#Boxes + 1] = { R0, C0, R1, C1, Color = ModuleColor, Height = 30, Inset = 0.05, Outline = 0.12 } end
+        if R0 then Boxes[#Boxes + 1] = { R0, C0, R1, C1, Color = Color, Height = 30, Inset = 0.05, Outline = 0.12 } end
     end
     -- Merge straight runs of belt cells into single boxes.
     for _, Path in ipairs(BP.Belts) do

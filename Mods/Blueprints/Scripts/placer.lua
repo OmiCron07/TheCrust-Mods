@@ -59,30 +59,38 @@ local function CanSettle(PC, Layer, M)
     return true
 end
 
-local function PlaceModule(PC, Layer, Geo, Mod, OR, OC, Turns)
+-- Spawns an unsettled (cursor-preview state) module for Mod near (OR, OC); mirrored like the source.
+function Placer.SpawnModule(PC, Mod, OR, OC, Turns)
     local Cls = Game.LoadClass(Mod.Class)
     if not Cls then return nil, "class not found: " .. Mod.Class end
-
     local Row, Col = ModuleTarget(Mod, OR, OC, Turns)
     local SpawnRow, SpawnCol = math.floor(Row + 0.5), math.floor(Col + 0.5)
     if not Grid.InBounds(SpawnRow, SpawnCol) then return nil, "out of bounds" end
-
     local Out = {}
     PC:SpawnModuleOnLocation(Cls, Grid.ToCell(SpawnRow, SpawnCol), Out, {})
     local M = Out["Out Module"]
     if not Game.Valid(M) then return nil, "spawn failed" end
+    if Mod.Mirrored then M:MirrorModule() end
+    return M
+end
 
-    local Ok, Err = pcall(function()
-        if Mod.Mirrored then M:MirrorModule() end
-        M:K2_SetActorRotation({ Pitch = 0, Yaw = ((Mod.Turns + Turns) % 4) * 90, Roll = 0 }, false)
-        M:RecalculateCellIndexesUnderModule(true, {})
-        M:RecalculatePerimeterAroundUndercells({})
-        pcall(function() M:SetRotationID() end)
+-- Rotates and snaps an unsettled module onto its blueprint position.
+function Placer.PositionModule(M, Geo, Mod, OR, OC, Turns)
+    local Row, Col = ModuleTarget(Mod, OR, OC, Turns)
+    M:K2_SetActorRotation({ Pitch = 0, Yaw = ((Mod.Turns + Turns) % 4) * 90, Roll = 0 }, false)
+    M:RecalculateCellIndexesUnderModule(true, {})
+    M:RecalculatePerimeterAroundUndercells({})
+    pcall(function() M:SetRotationID() end)
+    local X, Y = Game.RowColToWorld(Geo, Row, Col)
+    local Z = M:K2_GetActorLocation().Z
+    M["Snap Module to Cursor"](M, { X = X, Y = Y, Z = Z }, {})
+end
 
-        local X, Y = Game.RowColToWorld(Geo, Row, Col)
-        local Z = M:K2_GetActorLocation().Z
-        M["Snap Module to Cursor"](M, { X = X, Y = Y, Z = Z }, {})
-    end)
+local function PlaceModule(PC, Layer, Geo, Mod, OR, OC, Turns)
+    local M, SpawnErr = Placer.SpawnModule(PC, Mod, OR, OC, Turns)
+    if not M then return nil, SpawnErr end
+
+    local Ok, Err = pcall(Placer.PositionModule, M, Geo, Mod, OR, OC, Turns)
     if not Ok then
         M:K2_DestroyActor()
         return nil, "setup failed: " .. tostring(Err)
@@ -145,11 +153,16 @@ local function PlaceLink(EM, A, B)
     return true
 end
 
--- Cells already used by modules (except their IO cells, where belts connect), built belts or holo belts.
-local function OccupiedCells(CM, Layer)
-    local Used = {}
+-- Cell occupancy of the layer. Belts: cells a pasted belt cannot use (module cells except their IO
+-- cells, where belts connect, and existing belts). Modules: cells a pasted module cannot cover
+-- (all module cells and existing belts).
+function Placer.Occupancy(CM, Layer)
+    local Used, Modules = {}, {}
     for _, M in ipairs(Game.LayerModules(Layer)) do
-        for _, Cell in ipairs(Game.ModuleCells(M)) do Used[Cell] = true end
+        for _, Cell in ipairs(Game.ModuleCells(M)) do
+            Used[Cell] = true
+            Modules[Cell] = true
+        end
         M.IOCells:ForEach(function(_, V)
             local IO = V:get()
             if Game.Valid(IO) then Used[IO.CellId] = nil end
@@ -160,17 +173,21 @@ local function OccupiedCells(CM, Layer)
         Grid2.UniqueSections:ForEach(function(_, E)
             local S = E:get()
             if Game.Valid(S) then
-                S.State.CellIds:ForEach(function(_, V) Used[V:get()] = true end)
+                S.State.CellIds:ForEach(function(_, V)
+                    local Cell = V:get()
+                    Used[Cell] = true
+                    Modules[Cell] = true
+                end)
             end
         end)
     end
     Mark(CM.SectionGrid)
     Mark(CM.HoloSectionGrid)
-    return Used
+    return { Belts = Used, Modules = Modules }
 end
 
 local function PlaceBelts(CM, Layer, BP, OR, OC, Turns, Report)
-    local Used = OccupiedCells(CM, Layer)
+    local Used = Placer.Occupancy(CM, Layer).Belts
     for _, Path in ipairs(BP.Belts) do
         -- Transform to absolute cells; blocked cells split the path.
         local Abs = {}
