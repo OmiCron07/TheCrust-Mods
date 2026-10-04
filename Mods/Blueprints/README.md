@@ -1,0 +1,45 @@
+# Blueprints Mod for The Crust
+
+## Overview
+Select an area, copy/paste it or save it as a reusable blueprint. Pasting places **vanilla ghosts**:
+modules in planning mode (with their production scheme), holo conveyor belts and the electric wires
+between pasted modules. Build them afterwards with the normal game buttons.
+
+## Controls
+| Key | Action |
+|-----|--------|
+| `K` | Open / close the blueprint manager panel |
+| `Ctrl+K` | Select an area, then drag with the left mouse button |
+| `Ctrl+Shift+K` | Copy the selection and start pasting it |
+| `Alt+K` | Paste the clipboard again |
+| `R` / `Shift+R` | While pasting: rotate clockwise / counter clockwise |
+| Left click | While pasting: place the ghosts (stay in paste mode) |
+| Right click | Cancel the selection / stop pasting |
+
+The panel offers the same actions plus the library: name a selection and click **Save selection**,
+then **Place**, **Rename** (uses the name box) or **Delete** (click twice) a saved blueprint.
+
+## What is copied
+- Modules with rotation, mirroring and production scheme.
+- Conveyor belts (straight lines and turns), on built or holo sections.
+- Electric wires whose two ends are both copied modules.
+
+Not supported yet: distributors and underground belts (the game only creates them from real mouse
+input), storage/logistics settings other than the production scheme.
+
+## Configuration (`Scripts/config.lua`)
+- `Keys`: hotkeys (avoid letters the game binds: B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z).
+- `PasteConveyors` / `PasteElectricLinks`: toggle belt and wire pasting.
+- `PanelPosition`: panel offset from the top-right corner.
+- `DebugLogging`: log per-module paste errors to the UE4SS log.
+
+The library is stored in `library.lua` next to the `Scripts` folder.
+
+## Installation
+```pwsh
+.\Scripts\Deploy-Lua-Mod.ps1 -ModSourceDir "K:\GameMods\TheCrust\Mods\Blueprints"
+```
+
+## Development
+- `Scripts/selftest.lua`: pure checks (grid math, belt decomposition, serialization), runnable with any Lua 5.4.
+- Research notes: `Knowledge/Research/BuildingSystemAndBlueprints.md`.
