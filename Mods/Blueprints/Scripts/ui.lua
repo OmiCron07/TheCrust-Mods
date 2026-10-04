@@ -96,7 +96,10 @@ function UI.Create(PC, Position)
     pcall(function() Root:SetPadding({ Left = 12, Top = 10, Right = 12, Bottom = 10 }) end)
     local Slot = Canvas:AddChildToCanvas(Root)
     Slot:SetAutoSize(true)
-    Slot:SetPosition(Position)
+    -- Anchored to the top-right corner, away from the vanilla notifications on the left.
+    Slot:SetAnchors({ Minimum = { X = 1, Y = 0 }, Maximum = { X = 1, Y = 0 } })
+    Slot:SetAlignment({ X = 1, Y = 0 })
+    Slot:SetPosition({ X = -Position.X, Y = Position.Y })
 
     local V = Make("VerticalBox")
     Root:SetContent(V)

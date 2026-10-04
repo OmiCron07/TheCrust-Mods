@@ -54,16 +54,19 @@ function Game.IsKeyDown(PC, KeyName)
 end
 
 -- World geometry of the layer grid: cell size, world position of cell (0,0) corner, ground Z.
+-- Sampled near the grid center: GetGridLocationByCellID returns nothing for cells outside the level.
 function Game.Geometry(CM)
+    local Mid = Grid.Size // 2
     local A, B = {}, {}
-    CM:GetGridLocationByCellID(A, 0)
-    CM:GetGridLocationByCellID(B, Grid.Size + 1)
-    local LA, LB = A.OutLocation, B.OutLocation
+    CM:GetGridLocationByCellID(A, Grid.ToCell(Mid, Mid))
+    CM:GetGridLocationByCellID(B, Grid.ToCell(Mid + 1, Mid + 1))
+    -- The single FVector out param is unpacked straight into the table (X, Y, Z).
+    local LA, LB = A.OutLocation or A, B.OutLocation or B
     local Size = LB.X - LA.X
     return {
         CellSize = Size,
-        OriginX = LA.X - Size / 2,
-        OriginY = LA.Y - Size / 2,
+        OriginX = LA.X - (Mid + 0.5) * Size,
+        OriginY = LA.Y - (Mid + 0.5) * Size,
         Z = LA.Z,
     }
 end

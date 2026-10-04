@@ -25,8 +25,8 @@ local Config = {
     -- Recreate electric wires between pasted modules (vanilla wire cost may apply).
     PasteElectricLinks = true,
 
-    -- Panel position on screen (pixels from the top-left corner).
-    PanelPosition = { X = 24, Y = 140 },
+    -- Panel offset on screen (pixels from the top-right corner).
+    PanelPosition = { X = 24, Y = 120 },
 
     -- Enable debug log output in the UE4SS console / log file.
     DebugLogging = false,

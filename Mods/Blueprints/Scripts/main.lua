@@ -203,9 +203,12 @@ local function TickPasting(PC, LeftPressed, RightPressed)
     end
 end
 
+local RunPendingKeys -- Defined with the hotkey queue below.
+
 local function Tick()
     local PC = Game.PC()
     if not PC then return end
+    RunPendingKeys(PC)
     if not UI.IsCreated() then
         UI.Create(PC, Config.PanelPosition)
         RefreshLibrary()
@@ -263,18 +266,18 @@ local function SafeTick()
     end
 end
 
--- Runs a hotkey handler on the game thread, ignoring keys typed into the panel's name box.
+-- Hotkeys fire on the UE4SS input thread: only queue them, the game-thread tick runs them.
+-- (Queued ExecuteInGameThread closures outlive the Lua state on auto-reload and crash the game.)
+local PendingKeys = {}
 local function OnKey(Handler)
-    return function()
-        ExecuteInGameThread(function()
-            local Ok, Err = pcall(function()
-                if UI.IsTyping() then return end
-                local PC = Game.PC()
-                if PC then Handler(PC) end
-            end)
-            if not Ok then print("[Blueprints] Key error: " .. tostring(Err) .. "\n") end
-        end)
-    end
+    return function() PendingKeys[#PendingKeys + 1] = Handler end
+end
+
+function RunPendingKeys(PC)
+    local Keys = PendingKeys
+    PendingKeys = {}
+    if UI.IsTyping() then return end
+    for _, Handler in ipairs(Keys) do Handler(PC) end
 end
 
 local function Bind(Name, Handler)
@@ -308,14 +311,30 @@ Bind("RotateClockwise", function(PC)
 end)
 Bind("RotateCounterClockwise", function(PC) Rotate(PC, 3) end)
 
-ExecuteInGameThread(function()
-    pcall(UI.CleanupLeftovers)
-    pcall(Visuals.CleanupLeftovers)
-end)
+-- Game-thread tick: hooked on a GodPawn function the game calls every frame (see ZoomToCursor).
+local TickHookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"
+local TickHooked = false
+local CleanedUp = false
 
-LoopAsync(33, function()
-    ExecuteInGameThread(SafeTick)
-    return false
-end)
+local function OnFrame()
+    if not CleanedUp then
+        CleanedUp = true
+        pcall(UI.CleanupLeftovers)
+        pcall(Visuals.CleanupLeftovers)
+    end
+    SafeTick()
+end
+
+local function TryHookTick()
+    if TickHooked then return true end
+    local Fn = StaticFindObject(TickHookPath)
+    if Fn and Fn:IsValid() then
+        TickHooked = pcall(RegisterHook, TickHookPath, OnFrame)
+    end
+    return TickHooked
+end
+
+TryHookTick()
+LoopAsync(1000, TryHookTick)
 
 print(string.format("[Blueprints] Loaded, %d blueprints in library.\n", #State.Library))
