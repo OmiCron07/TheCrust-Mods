@@ -13,8 +13,9 @@ if not Config then
         ZoomInToCursor = true,
         ZoomOutFromCursor = false,
         ZoomStrengthMultiplier = 1.0,
+        UndergroundMaxZoom = 10000.0,
         ClampToMapBounds = true,
-        DebugLogging = true
+        DebugLogging = false
     }
 end
 
@@ -27,6 +28,31 @@ local function Log(Message)
     if Config.DebugLogging then
         print(string.format("[ZoomToCursor] %s\n", tostring(Message)))
     end
+end
+
+-- Apply configurable Underground max zoom distance to GodPawn instance
+local function ApplyUndergroundMaxZoom(GodPawn)
+    if not Config.UndergroundMaxZoom or Config.UndergroundMaxZoom <= 0 then return end
+    if GodPawn and GodPawn:IsValid() then
+        if GodPawn.MaxDistanceToGround_Underground ~= Config.UndergroundMaxZoom then
+            GodPawn.MaxDistanceToGround_Underground = Config.UndergroundMaxZoom
+            Log(string.format("Applied UndergroundMaxZoom = %.1f to GodPawn", Config.UndergroundMaxZoom))
+        end
+    end
+end
+
+-- Apply configurable Underground max zoom distance to GodPawn CDO
+local function ApplyCDOUndergroundMaxZoom()
+    if not Config.UndergroundMaxZoom or Config.UndergroundMaxZoom <= 0 then return end
+    pcall(function()
+        local GodPawnCDO = StaticFindObject("/Game/Blueprints/Core/GodPawn.Default__GodPawn_C")
+        if GodPawnCDO and GodPawnCDO:IsValid() then
+            if GodPawnCDO.MaxDistanceToGround_Underground ~= Config.UndergroundMaxZoom then
+                GodPawnCDO.MaxDistanceToGround_Underground = Config.UndergroundMaxZoom
+                Log(string.format("Applied UndergroundMaxZoom = %.1f to GodPawn CDO", Config.UndergroundMaxZoom))
+            end
+        end
+    end)
 end
 
 -- Pinned target position for the active zoom session
@@ -101,6 +127,8 @@ end
 local function OnZoomInput(self, AxisValue)
     local GodPawn = self:get()
     if not GodPawn or not GodPawn:IsValid() then return end
+
+    ApplyUndergroundMaxZoom(GodPawn)
 
     local Axis = 0.0
     if AxisValue then
@@ -195,6 +223,11 @@ end
 -- ArmLenght Hook: Smoothly glide Pawn towards TargetPawn every frame
 -- -----------------------------------------------------------------------------
 local function OnArmLenght(self, DeltaTimeParm)
+    local GodPawn = self:get()
+    if GodPawn and GodPawn:IsValid() then
+        ApplyUndergroundMaxZoom(GodPawn)
+    end
+
     if not TargetPawnX or not TargetPawnY then return end
 
     local now = os.clock()
@@ -279,12 +312,27 @@ local function TryRegisterHooks()
         end
     end
 
+    ApplyCDOUndergroundMaxZoom()
+    pcall(function()
+        local currentPawn = FindFirstOf("GodPawn_C")
+        if currentPawn and currentPawn:IsValid() then
+            ApplyUndergroundMaxZoom(currentPawn)
+        end
+    end)
+
     return ZoomHookRegistered and ArmHookRegistered
 end
 
 TryRegisterHooks()
 pcall(function() RegisterHook("/Script/Engine.PlayerController:ClientRestart", function() TryRegisterHooks() end) end)
-pcall(function() NotifyOnNewObject("GodPawn_C", function() TryRegisterHooks() end) end)
+pcall(function()
+    NotifyOnNewObject("GodPawn_C", function(newObj)
+        TryRegisterHooks()
+        if newObj and newObj:IsValid() then
+            ApplyUndergroundMaxZoom(newObj)
+        end
+    end)
+end)
 pcall(function() LoopAsync(1000, function() return TryRegisterHooks() end) end)
 
 Log("Smooth ZoomToCursor mod active.")

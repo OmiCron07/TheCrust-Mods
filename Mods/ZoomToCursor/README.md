@@ -8,13 +8,15 @@ By default in **The Crust**, scrolling the mouse wheel zooms the camera strictly
 ## Features
 - **Accurate Geometric Projection**: Traces ray collision or mathematical ground-plane intersection to identify the exact 3D world coordinate under the cursor.
 - **Proportional Focal Shift**: Calculates the exact shift factor based on spring arm length and zoom step to keep the targeted world point stationary under the mouse cursor.
+- **Underground Extended Zoom-Out**: Expands maximum underground camera distance (vanilla 4200.0) up to 10000.0+ while preserving the native surface / crater zoom limit (25000.0).
 - **Safe Boundary Clamping**: Prevents accidental camera drift beyond crater and surface boundaries.
-- **Configurable**: Easily toggle zoom-in vs zoom-out behavior, adjust intensity multipliers, or enable debug logging in `Scripts/config.lua`.
+- **Configurable**: Easily toggle zoom-in vs zoom-out behavior, adjust intensity multipliers, set underground zoom distance, or enable debug logging in `Scripts/config.lua`.
 
 ## Configuration (`Scripts/config.lua`)
 - `ZoomInToCursor` (boolean, default: `true`): Focuses zoom on cursor when scrolling up.
-- `ZoomOutFromCursor` (boolean, default: `true`): Centers zoom away from cursor when scrolling down.
+- `ZoomOutFromCursor` (boolean, default: `false`): Centers zoom away from cursor when scrolling down (false = screen center vanilla).
 - `ZoomStrengthMultiplier` (float, default: `1.0`): Multiplier for the zoom displacement vector (1.0 = exact 1:1 focal match).
+- `UndergroundMaxZoom` (float, default: `10000.0`): Maximum spring arm camera distance underground (vanilla: 4200.0).
 - `ClampToMapBounds` (boolean, default: `true`): Keeps camera within map boundaries.
 - `DebugLogging` (boolean, default: `false`): Prints real-time coordinates and shifts to UE4SS console/log.
 

@@ -10,11 +10,16 @@ local Config = {
     -- Multiplier for zoom shift intensity (1.0 = exact 1:1 focal match)
     ZoomStrengthMultiplier = 1.0,
 
+    -- Maximum zoom-out camera distance for Underground layer
+    -- Vanilla default: 4200.0 (Surface is 25000.0)
+    -- Increase to 10000.0 or more to allow zooming out significantly farther underground
+    UndergroundMaxZoom = 10000.0,
+
     -- Whether to prevent camera from drifting outside crater boundaries
     ClampToMapBounds = true,
 
     -- Enable debug log output in UE4SS console / log file
-    DebugLogging = true
+    DebugLogging = false
 }
 
 return Config

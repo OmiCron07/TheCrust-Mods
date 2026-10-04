@@ -21,6 +21,9 @@ Document the camera controller architecture in The Crust and the implementation 
 - Cursor world ground position is queryable via `APlayerController:GetHitResultUnderCursorByChannel(11, true, HitResult)` with fallback to `DeprojectMousePositionToWorld` intersected with the horizontal plane $Z = \text{PawnLoc.Z}$.
 - Proportional focal shift equation to keep world point $M$ stationary under cursor during zoom:
   $\Delta P = (M - P) \times \left(1 - \frac{L_{new}}{L_{old}}\right)$ where $L_{old}$ is current target arm length and $L_{new}$ is arm length post-step.
+- Layers: `APlayerController.CurrentGameLayer` indicates current gameplay view (`0` = Underground, `1` = Orbital, `2` = Crater / Surface).
+- Camera Zoom Limits: Surface layer is clamped to 25000.0 (`MaxDistanceToGround_Crater`). Underground zoom is clamped in `ArmLenght` via `GetMaxZoomDistance_InputMode()`, which directly reads `GodPawn.MaxDistanceToGround_Underground` (vanilla default: 4200.0).
+- Dynamically setting `GodPawn.MaxDistanceToGround_Underground` (and `Default__GodPawn_C`) expands the maximum zoom-out distance underground without affecting surface zoom, while `CurrentZoomPercentage` automatically normalizes against the new maximum.
 - Map limits (`CraterCenterOffset`, `CraterRadius`) in `GodPawn_C` can bound camera displacement to prevent out-of-bounds drift.
 - Target Pinning: Re-deprojecting cursor on each wheel detent leads to feedback drift as camera motion shifts the ground under cursor; pinning initial ground target across scroll detents (<0.5s timeout) guarantees a straight trajectory to the targeted object.
 
