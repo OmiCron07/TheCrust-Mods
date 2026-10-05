@@ -85,10 +85,12 @@ pastes are cancelled when you switch layer.
 ## What is copied
 - Modules with rotation, mirroring and production scheme.
 - Conveyor belts (straight lines and turns), on built or holo sections.
+- Distributors (splitters / mergers): recreated from the belts joining them. Their output filters
+  and priorities are not copied.
 - Electric wires whose two ends are both copied modules.
 
-Not supported yet: distributors and underground belts (the game only creates them from real mouse
-input), storage/logistics settings other than the production scheme.
+Not supported yet: underground belts, storage/logistics settings other than the production scheme.
+Blueprints saved before distributor support must be captured again to include them.
 
 ## Configuration (`Scripts/config.lua`)
 - `Keys`: hotkeys (avoid letters the game binds: B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z).
