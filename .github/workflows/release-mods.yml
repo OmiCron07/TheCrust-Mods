@@ -43,7 +43,7 @@ jobs:
             range="-1"
           fi
           {
-            echo "Extract a zip into the game root folder (the one containing \`TheCrust\`). Requires UE4SS v3."
+            echo "Extract a zip into the game root folder (the one containing \`TheCrust\`). Lua mods require UE4SS v3."
             echo "See the [README](https://github.com/${GITHUB_REPOSITORY}#installation) for details."
             echo
             echo "## Changes"
