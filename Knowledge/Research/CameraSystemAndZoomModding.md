@@ -25,9 +25,12 @@ Document the camera controller architecture in The Crust and the implementation 
 - Camera Zoom Limits: Surface layer is clamped to 25000.0 (`MaxDistanceToGround_Crater`). Underground zoom is clamped in `ArmLenght` via `GetMaxZoomDistance_InputMode()`, which directly reads `GodPawn.MaxDistanceToGround_Underground` (vanilla default: 4200.0).
 - Dynamically setting `GodPawn.MaxDistanceToGround_Underground` (and `Default__GodPawn_C`) expands the maximum zoom-out distance underground without affecting surface zoom, while `CurrentZoomPercentage` automatically normalizes against the new maximum.
 - Map limits (`CraterCenterOffset`, `CraterRadius`) in `GodPawn_C` can bound camera displacement to prevent out-of-bounds drift.
+- WASD / arrow camera movement fires `GodPawn_C:InpAxisEvt_MoveForward_K2Node_InputAxisEvent_1` and `InpAxisEvt_MoveRight_K2Node_InputAxisEvent_2` (AxisValue, every frame, 0 when idle) and moves the pawn through `FloatingPawnMovement` (keeps gliding briefly after release).
 - Target Pinning: Re-deprojecting cursor on each wheel detent leads to feedback drift as camera motion shifts the ground under cursor; pinning initial ground target across scroll detents (<0.5s timeout) guarantees a straight trajectory to the targeted object.
 
 ## Pitfalls & Dead Ends
+- Rubber-banding: lerping the pawn towards an absolute target position (set at zoom time) fights any concurrent movement (WASD, glide, edge scroll). Store the remaining offset and apply it as a per-frame delta on top of the current location instead; ZoomToCursor also cancels the offset on move input.
+- `StaticFindObject` can return a valid `GodPawn_C` UFunction before the Blueprint class finishes loading; `RegisterHook` then throws (`UFunction::Func: 0x0`). Always `pcall(RegisterHook, ...)` and retry from `LoopAsync`.
 - UE4SS UFunction hooks: For Blueprint script functions (`/Game/...`), only the primary `Callback` parameter in `RegisterHook` executes reliably. Providing a secondary `PostCallback` parameter will result in the post-callback being ignored or never called.
 - Modifying bytecode directly in cooked `GodPawn.uasset` risks struct offset corruption and engine desync; UE4SS UFunction hooking provides safe, non-destructive execution.
 - UE4SS `UE4SS-settings.ini` defaulted to `MajorVersion = 5` and `MinorVersion = 6` in some templates; must be explicitly configured to `MajorVersion = 4` and `MinorVersion = 27` for The Crust (UE 4.27.2) to avoid crash on startup.

@@ -10,12 +10,13 @@ By default in **The Crust**, scrolling the mouse wheel zooms the camera strictly
 - **Proportional Focal Shift**: Calculates the exact shift factor based on spring arm length and zoom step to keep the targeted world point stationary under the mouse cursor.
 - **Underground Extended Zoom-Out**: Expands maximum underground camera distance (vanilla 4200.0) up to 10000.0+ while preserving the native surface / crater zoom limit (25000.0).
 - **Safe Boundary Clamping**: Prevents accidental camera drift beyond crater and surface boundaries.
+- **WASD Friendly**: While the camera is moved with WASD / arrows (plus a 0.3 s grace period), zoom stays vanilla (screen center) and any pending cursor shift is cancelled. The cursor shift is applied as a delta on top of the current position, so it never pulls the camera back.
 - **Configurable**: Easily toggle zoom-in vs zoom-out behavior, adjust intensity multipliers, set underground zoom distance, or enable debug logging in `Scripts/config.lua`.
 
 ## Configuration (`Scripts/config.lua`)
 - `ZoomInToCursor` (boolean, default: `true`): Focuses zoom on cursor when scrolling up.
-- `ZoomOutFromCursor` (boolean, default: `false`): Centers zoom away from cursor when scrolling down (false = screen center vanilla).
-- `ZoomStrengthMultiplier` (float, default: `1.0`): Multiplier for the zoom displacement vector (1.0 = exact 1:1 focal match).
+- `ZoomOutFromCursor` (boolean, default: `false`): Zooms out away from the cursor when scrolling down (false = screen center vanilla).
+- `ZoomStrengthMultiplier` (float, default: `1.0`): Multiplier for the per-notch shift towards the cursor (capped at 90% of the cursor distance).
 - `UndergroundMaxZoom` (float, default: `10000.0`): Maximum spring arm camera distance underground (vanilla: 4200.0).
 - `ClampToMapBounds` (boolean, default: `true`): Keeps camera within map boundaries.
 - `DebugLogging` (boolean, default: `false`): Prints real-time coordinates and shifts to UE4SS console/log.
@@ -28,3 +29,5 @@ Run the deployment script from PowerShell:
 Or manually copy the `ZoomToCursor` folder into:
 `<The Crust Install>\TheCrust\Binaries\Win64\ue4ss\Mods\`
 and ensure `ZoomToCursor : 1` is present in `mods.txt`.
+
+The deploy script overwrites `config.lua`; to keep a customized config, copy only `Scripts/main.lua`. Quit the game before deploying: the UE4SS auto-reload of a mod hooking `GodPawn_C:ArmLenght` usually crashes the game.

@@ -7,7 +7,7 @@ local Config = {
     -- Set to false so that zooming out always stays centered on screen center (vanilla)
     ZoomOutFromCursor = false,
 
-    -- Multiplier for zoom shift intensity (1.0 = exact 1:1 focal match)
+    -- Multiplier for zoom shift intensity (1.0 = default; per-notch shift is capped at 90% of the cursor distance)
     ZoomStrengthMultiplier = 1.0,
 
     -- Maximum zoom-out camera distance for Underground layer

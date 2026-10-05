@@ -1,28 +1,25 @@
 -- =============================================================================
 -- Mod: ZoomToCursor
--- Description: Smoothly zooms towards mouse cursor for zoom-in,
---              and zooms out from screen center (vanilla) for zoom-out.
+-- Description: Smoothly zooms towards the mouse cursor (zoom-in and/or zoom-out,
+--              per config). Falls back to vanilla center zoom while WASD moves the camera.
 -- =============================================================================
 
-local Config = nil
-pcall(function()
-    Config = require("config")
-end)
-if not Config then
-    Config = {
-        ZoomInToCursor = true,
-        ZoomOutFromCursor = false,
-        ZoomStrengthMultiplier = 1.0,
-        UndergroundMaxZoom = 10000.0,
-        ClampToMapBounds = true,
-        DebugLogging = false
-    }
-end
+local Defaults = {
+    ZoomInToCursor = true,
+    ZoomOutFromCursor = false,
+    ZoomStrengthMultiplier = 1.0,
+    UndergroundMaxZoom = 10000.0,
+    ClampToMapBounds = true,
+    DebugLogging = false
+}
 
-local UEHelpers = nil
-pcall(function()
-    UEHelpers = require("UEHelpers")
-end)
+local Ok, Loaded = pcall(require, "config")
+if not Ok or type(Loaded) ~= "table" then
+    print("[ZoomToCursor] config.lua failed to load, using defaults: " .. tostring(Loaded) .. "\n")
+    Loaded = {}
+end
+-- Missing keys fall back to defaults (explicit false values are kept)
+local Config = setmetatable(Loaded, { __index = Defaults })
 
 local function Log(Message)
     if Config.DebugLogging then
@@ -33,36 +30,37 @@ end
 -- Apply configurable Underground max zoom distance to GodPawn instance
 local function ApplyUndergroundMaxZoom(GodPawn)
     if not Config.UndergroundMaxZoom or Config.UndergroundMaxZoom <= 0 then return end
-    if GodPawn and GodPawn:IsValid() then
-        if GodPawn.MaxDistanceToGround_Underground ~= Config.UndergroundMaxZoom then
-            GodPawn.MaxDistanceToGround_Underground = Config.UndergroundMaxZoom
-            Log(string.format("Applied UndergroundMaxZoom = %.1f to GodPawn", Config.UndergroundMaxZoom))
-        end
+    if GodPawn.MaxDistanceToGround_Underground ~= Config.UndergroundMaxZoom then
+        GodPawn.MaxDistanceToGround_Underground = Config.UndergroundMaxZoom
+        Log(string.format("Applied UndergroundMaxZoom = %.1f to GodPawn", Config.UndergroundMaxZoom))
     end
 end
 
--- Apply configurable Underground max zoom distance to GodPawn CDO
-local function ApplyCDOUndergroundMaxZoom()
-    if not Config.UndergroundMaxZoom or Config.UndergroundMaxZoom <= 0 then return end
-    pcall(function()
-        local GodPawnCDO = StaticFindObject("/Game/Blueprints/Core/GodPawn.Default__GodPawn_C")
-        if GodPawnCDO and GodPawnCDO:IsValid() then
-            if GodPawnCDO.MaxDistanceToGround_Underground ~= Config.UndergroundMaxZoom then
-                GodPawnCDO.MaxDistanceToGround_Underground = Config.UndergroundMaxZoom
-                Log(string.format("Applied UndergroundMaxZoom = %.1f to GodPawn CDO", Config.UndergroundMaxZoom))
-            end
-        end
-    end)
-end
-
--- Pinned target position for the active zoom session
+-- Pinned cursor ground position for the active zoom gesture
 local PinnedTargetX = nil
 local PinnedTargetY = nil
-local LastZoomInTime = 0.0
+local PinnedDirection = 0
+local LastZoomTime = 0.0
 
--- Interpolation target for smooth camera translation
-local TargetPawnX = nil
-local TargetPawnY = nil
+-- Camera offset still to be applied by the per-frame glide. Applied as a delta on top of
+-- the current location so it composes with other camera motion instead of fighting it.
+local PendingX = nil
+local PendingY = nil
+
+-- WASD movement suppresses cursor zoom (vanilla center zoom) for a short grace period,
+-- covering the FloatingPawnMovement glide after the keys are released.
+local MoveGraceSeconds = 0.3
+local LastMoveTime = -math.huge
+
+local function ResetZoom()
+    PinnedTargetX, PinnedTargetY, PinnedDirection = nil, nil, 0
+    PendingX, PendingY = nil, nil
+end
+
+local function ReadFloat(Param)
+    local Value = Param and Param:get()
+    return type(Value) == "number" and Value or 0.0
+end
 
 -- Retrieve accurate 3D ground location under mouse cursor
 local function GetCursorGroundPosition(GodPawn, PC, PawnLoc)
@@ -122,163 +120,122 @@ local function GetCursorGroundPosition(GodPawn, PC, PawnLoc)
 end
 
 -- -----------------------------------------------------------------------------
--- Zoom Input Event: Calculate target position on Zoom IN
+-- Move Input Events (WASD / arrows): cancel cursor zoom while the camera is driven
+-- -----------------------------------------------------------------------------
+local function OnMoveInput(self, AxisValue)
+    if math.abs(ReadFloat(AxisValue)) < 0.001 then return end
+    LastMoveTime = os.clock()
+    if PendingX or PinnedTargetX then ResetZoom() end
+end
+
+-- -----------------------------------------------------------------------------
+-- Zoom Input Event: queue a camera shift towards (zoom in) or away from (zoom out) the cursor
 -- -----------------------------------------------------------------------------
 local function OnZoomInput(self, AxisValue)
-    local GodPawn = self:get()
-    if not GodPawn or not GodPawn:IsValid() then return end
+    local Axis = ReadFloat(AxisValue)
+    -- Ignore idle frames
+    if math.abs(Axis) < 0.001 then return end
 
-    ApplyUndergroundMaxZoom(GodPawn)
-
-    local Axis = 0.0
-    if AxisValue then
-        if type(AxisValue.get) == "function" then
-            Axis = AxisValue:get()
-        elseif type(AxisValue) == "number" then
-            Axis = AxisValue
-        end
+    local Direction = Axis > 0 and 1 or -1
+    local Enabled = (Direction > 0 and Config.ZoomInToCursor) or (Direction < 0 and Config.ZoomOutFromCursor)
+    local now = os.clock()
+    if not Enabled or now - LastMoveTime < MoveGraceSeconds then
+        -- Vanilla zoom: centered on screen
+        ResetZoom()
+        return
     end
 
-    -- Ignore idle frames
-    if not Axis or math.abs(Axis) < 0.001 then return end
+    local GodPawn = self:get()
+    if not GodPawn or not GodPawn:IsValid() then return end
 
     local PawnLoc = GodPawn:K2_GetActorLocation()
     if not PawnLoc then return end
 
-    -- ZOOM OUT (Axis < 0): Keep zoom centered on screen (vanilla behavior)
-    if Axis < 0 then
-        PinnedTargetX = nil
-        PinnedTargetY = nil
-        TargetPawnX = nil
-        TargetPawnY = nil
-        return
-    end
-
-    -- ZOOM IN (Axis > 0): Pin initial cursor ground location throughout gesture
-    local now = os.clock()
-    local isNewGesture = (not PinnedTargetX) or (not PinnedTargetY) or (now - LastZoomInTime > 0.5)
-
-    if isNewGesture then
-        local PC = GodPawn.PlayerControllerRef
-        if not PC or not PC:IsValid() then
-            if UEHelpers then PC = UEHelpers.GetPlayerController() end
-        end
-
-        local cursorX, cursorY, method = GetCursorGroundPosition(GodPawn, PC, PawnLoc)
+    -- Pin the initial cursor ground location throughout the gesture
+    if not PinnedTargetX or Direction ~= PinnedDirection or now - LastZoomTime > 0.5 then
+        local cursorX, cursorY, method = GetCursorGroundPosition(GodPawn, GodPawn.PlayerControllerRef, PawnLoc)
         if not cursorX or not cursorY then return end
 
-        PinnedTargetX = cursorX
-        PinnedTargetY = cursorY
-        TargetPawnX = PawnLoc.X
-        TargetPawnY = PawnLoc.Y
-
-        Log(string.format("New Zoom IN session pinned to: (%.1f, %.1f) via %s", PinnedTargetX, PinnedTargetY, method))
+        PinnedTargetX, PinnedTargetY, PinnedDirection = cursorX, cursorY, Direction
+        Log(string.format("New zoom gesture (%d) pinned to: (%.1f, %.1f) via %s", Direction, cursorX, cursorY, method))
     end
-
-    if not PinnedTargetX or not PinnedTargetY then return end
+    LastZoomTime = now
 
     local LongArm = GodPawn.LongArm
     local armLength = (LongArm and LongArm:IsValid() and LongArm.TargetArmLength) or 4000.0
     if armLength < 300.0 then armLength = 300.0 end
 
-    -- Proportional zoom fraction per wheel notch
+    -- Proportional zoom fraction per wheel notch; the multiplier scales the clamped value
+    -- so it takes effect at every arm length
     local zoomStep = math.abs(GodPawn["Zoom Step"] or 500.0)
     if zoomStep < 100.0 then zoomStep = 500.0 end
-    local fraction = (zoomStep / armLength) * math.abs(Axis) * (Config.ZoomStrengthMultiplier or 1.0)
+    local fraction = (zoomStep / armLength) * math.abs(Axis)
     if fraction > 0.35 then fraction = 0.35 end
     if fraction < 0.08 then fraction = 0.08 end
+    fraction = math.min(fraction * Config.ZoomStrengthMultiplier, 0.9) * Direction
 
-    if not TargetPawnX then TargetPawnX = PawnLoc.X end
-    if not TargetPawnY then TargetPawnY = PawnLoc.Y end
-
-    -- Calculate displacement towards PINNED target (consistent straight-line trajectory)
-    local shiftX = (PinnedTargetX - TargetPawnX) * fraction
-    local shiftY = (PinnedTargetY - TargetPawnY) * fraction
-
-    TargetPawnX = TargetPawnX + shiftX
-    TargetPawnY = TargetPawnY + shiftY
-    LastZoomInTime = now
+    -- Displace the final camera position (current + still pending) towards / away from the pin
+    local baseX = PawnLoc.X + (PendingX or 0.0)
+    local baseY = PawnLoc.Y + (PendingY or 0.0)
+    local targetX = baseX + (PinnedTargetX - baseX) * fraction
+    local targetY = baseY + (PinnedTargetY - baseY) * fraction
 
     -- Map boundary clamping
     if Config.ClampToMapBounds then
         local centerOffset = GodPawn.CraterCenterOffset
         local radius = GodPawn.CraterRadius
         if centerOffset and radius and radius > 0 then
-            local distSq = (TargetPawnX - centerOffset)^2 + (TargetPawnY - centerOffset)^2
+            local distSq = (targetX - centerOffset)^2 + (targetY - centerOffset)^2
             local maxDist = radius * 1.5
             if distSq > (maxDist * maxDist) then
-                local dist = math.sqrt(distSq)
-                local scale = maxDist / dist
-                TargetPawnX = centerOffset + (TargetPawnX - centerOffset) * scale
-                TargetPawnY = centerOffset + (TargetPawnY - centerOffset) * scale
+                local scale = maxDist / math.sqrt(distSq)
+                targetX = centerOffset + (targetX - centerOffset) * scale
+                targetY = centerOffset + (targetY - centerOffset) * scale
             end
         end
     end
 
-    Log(string.format("Zoom IN: Target (%.1f, %.1f) shifted by (%.1f, %.1f) towards pinned (%.1f, %.1f)",
-        TargetPawnX, TargetPawnY, shiftX, shiftY, PinnedTargetX, PinnedTargetY))
+    PendingX = targetX - PawnLoc.X
+    PendingY = targetY - PawnLoc.Y
+
+    Log(string.format("Zoom (%d): target (%.1f, %.1f), pinned (%.1f, %.1f)",
+        Direction, targetX, targetY, PinnedTargetX, PinnedTargetY))
 end
 
 -- -----------------------------------------------------------------------------
--- ArmLenght Hook: Smoothly glide Pawn towards TargetPawn every frame
+-- ArmLenght Hook (every frame): glide the pending offset onto the Pawn
 -- -----------------------------------------------------------------------------
 local function OnArmLenght(self, DeltaTimeParm)
     local GodPawn = self:get()
-    if GodPawn and GodPawn:IsValid() then
-        ApplyUndergroundMaxZoom(GodPawn)
-    end
-
-    if not TargetPawnX or not TargetPawnY then return end
-
-    local now = os.clock()
-    -- Safety timeout: if no zoom input for > 1.0 second, reset all targets
-    if LastZoomInTime and (now - LastZoomInTime > 1.0) then
-        TargetPawnX = nil
-        TargetPawnY = nil
-        PinnedTargetX = nil
-        PinnedTargetY = nil
-        return
-    end
-
-    local GodPawn = self:get()
     if not GodPawn or not GodPawn:IsValid() then return end
+
+    ApplyUndergroundMaxZoom(GodPawn)
+
+    if not PendingX then return end
 
     local PawnLoc = GodPawn:K2_GetActorLocation()
     if not PawnLoc then return end
 
-    local diffX = TargetPawnX - PawnLoc.X
-    local diffY = TargetPawnY - PawnLoc.Y
-    local distSq = diffX * diffX + diffY * diffY
-
-    -- Once arrived within threshold, finish this interpolation step
-    if distSq < 16.0 then
-        TargetPawnX = nil
-        TargetPawnY = nil
-        return
-    end
-
-    local dt = 0.016
-    if DeltaTimeParm then
-        if type(DeltaTimeParm.get) == "function" then
-            local v = DeltaTimeParm:get()
-            if v and type(v) == "number" and v > 0.0001 and v < 0.2 then dt = v end
-        elseif type(DeltaTimeParm) == "number" and DeltaTimeParm > 0.0001 and DeltaTimeParm < 0.2 then
-            dt = DeltaTimeParm
-        end
-    end
+    local dt = ReadFloat(DeltaTimeParm)
+    if dt <= 0.0001 or dt >= 0.2 then dt = 0.016 end
 
     -- Match game camera interpolation speed (10.0)
-    local interpSpeed = 10.0
-    local alpha = 1.0 - math.exp(-interpSpeed * dt)
-    if alpha > 1.0 then alpha = 1.0 end
+    local alpha = 1.0 - math.exp(-10.0 * dt)
+    local stepX, stepY = PendingX * alpha, PendingY * alpha
 
-    local newX = PawnLoc.X + diffX * alpha
-    local newY = PawnLoc.Y + diffY * alpha
+    -- Once nearly arrived, apply the remainder and finish
+    if (PendingX * PendingX + PendingY * PendingY) < 16.0 then
+        stepX, stepY = PendingX, PendingY
+        PendingX, PendingY = nil, nil
+    else
+        PendingX, PendingY = PendingX - stepX, PendingY - stepY
+    end
 
-    GodPawn:K2_SetActorLocation({ X = newX, Y = newY, Z = PawnLoc.Z }, false, {}, false)
+    local NewLoc = { X = PawnLoc.X + stepX, Y = PawnLoc.Y + stepY, Z = PawnLoc.Z }
+    GodPawn:K2_SetActorLocation(NewLoc, false, {}, false)
 
     pcall(function()
-        GodPawn.DestinationPoint = { X = newX, Y = newY, Z = PawnLoc.Z }
+        GodPawn.DestinationPoint = NewLoc
         GodPawn.DoWeReachDestination = true
     end)
 end
@@ -287,52 +244,32 @@ end
 -- Deferred Hook Registration
 -- =============================================================================
 
-local ZoomHookRegistered = false
-local ArmHookRegistered = false
+local GodPawnPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:"
+local Hooks = {
+    { Name = "InpAxisEvt_Zoom_K2Node_InputAxisEvent_0", Callback = OnZoomInput },
+    { Name = "InpAxisEvt_MoveForward_K2Node_InputAxisEvent_1", Callback = OnMoveInput },
+    { Name = "InpAxisEvt_MoveRight_K2Node_InputAxisEvent_2", Callback = OnMoveInput },
+    { Name = "ArmLenght", Callback = OnArmLenght },
+}
 
-local ZoomHookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:InpAxisEvt_Zoom_K2Node_InputAxisEvent_0"
-local ArmHookPath  = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"
-
+-- The UFunction can be found before its Blueprint class finishes loading (Func = 0x0),
+-- making RegisterHook throw: pcall and retry on the next poll.
 local function TryRegisterHooks()
-    if not ZoomHookRegistered then
-        local ufuncZoom = StaticFindObject(ZoomHookPath)
-        if ufuncZoom and ufuncZoom:IsValid() then
-            RegisterHook(ZoomHookPath, OnZoomInput, function() end)
-            ZoomHookRegistered = true
-            Log("Hooked zoom input.")
+    local AllDone = true
+    for _, Hook in ipairs(Hooks) do
+        if not Hook.Registered then
+            local Path = GodPawnPath .. Hook.Name
+            local Fn = StaticFindObject(Path)
+            if Fn and Fn:IsValid() then
+                Hook.Registered = pcall(RegisterHook, Path, Hook.Callback)
+                if Hook.Registered then Log("Hooked " .. Hook.Name) end
+            end
+            AllDone = AllDone and Hook.Registered == true
         end
     end
-
-    if not ArmHookRegistered then
-        local ufuncArm = StaticFindObject(ArmHookPath)
-        if ufuncArm and ufuncArm:IsValid() then
-            RegisterHook(ArmHookPath, OnArmLenght, function() end)
-            ArmHookRegistered = true
-            Log("Hooked ArmLenght.")
-        end
-    end
-
-    ApplyCDOUndergroundMaxZoom()
-    pcall(function()
-        local currentPawn = FindFirstOf("GodPawn_C")
-        if currentPawn and currentPawn:IsValid() then
-            ApplyUndergroundMaxZoom(currentPawn)
-        end
-    end)
-
-    return ZoomHookRegistered and ArmHookRegistered
+    return AllDone
 end
 
-TryRegisterHooks()
-pcall(function() RegisterHook("/Script/Engine.PlayerController:ClientRestart", function() TryRegisterHooks() end) end)
-pcall(function()
-    NotifyOnNewObject("GodPawn_C", function(newObj)
-        TryRegisterHooks()
-        if newObj and newObj:IsValid() then
-            ApplyUndergroundMaxZoom(newObj)
-        end
-    end)
-end)
-pcall(function() LoopAsync(1000, function() return TryRegisterHooks() end) end)
+if not TryRegisterHooks() then LoopAsync(1000, TryRegisterHooks) end
 
 Log("Smooth ZoomToCursor mod active.")
