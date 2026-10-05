@@ -77,8 +77,8 @@ once with **Build selection**.
 | `R` / `Shift+R` | While pasting: rotate clockwise / counter clockwise |
 | Left / right click | While pasting: place the ghosts / cancel |
 
-Not supported yet: underground belts, distributor filters, storage and logistics settings other
-than the production scheme. Hotkeys and options are in `Scripts\config.lua`.
+Distributors and module IO cell settings (filters, priorities, locks, overflow, IO swaps) are
+copied too. Not supported yet: underground belts, storage limits. Hotkeys and options are in `Scripts\config.lua`.
 Full documentation: [Mods/Blueprints/README.md](Mods/Blueprints/README.md).
 
 ### ZoomToCursor

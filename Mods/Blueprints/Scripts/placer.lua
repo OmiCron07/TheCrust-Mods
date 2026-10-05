@@ -4,6 +4,7 @@
 
 local Grid = require("grid")
 local Game = require("game")
+local Settings = require("settings")
 
 local Placer = {}
 
@@ -228,6 +229,27 @@ local function PlaceBelts(CM, Layer, BP, OR, OC, Turns, Report)
     CM:UpdateHoloSectionCosts()
 end
 
+-- Applies the captured distributor settings to the distributors the pasted belts created.
+local function ApplyDistributors(CM, BP, OR, OC, Turns, Report)
+    for _, D in ipairs(BP.Distributors or {}) do
+        local DR, DC = Grid.Rotate(D.DR, D.DC, Turns)
+        local Cell = Grid.ToCell(OR + DR, OC + DC)
+        local S = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
+        if not Game.Valid(S) then S = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell) end
+        if Game.Valid(S) and S:GetSectionType() == 2 then
+            local Ok, Mismatches = pcall(Settings.ApplyDistributor, CM, S, D, Turns)
+            if Ok then
+                Report.Distributors = Report.Distributors + 1
+                Report.SettingsMismatches = Report.SettingsMismatches + Mismatches
+            else
+                Report.Errors[#Report.Errors + 1] = "distributor settings: " .. tostring(Mismatches)
+            end
+        else
+            Report.DistributorsMissing = Report.DistributorsMissing + 1
+        end
+    end
+end
+
 -- Vanilla "play" button of a planned module: supply / unlock check, then start construction.
 -- Returns true when the module is (now) under construction.
 function Placer.BuildPlanned(M)
@@ -294,6 +316,7 @@ local function NewReport()
     return {
         Modules = 0, ModulesFailed = 0, Links = 0, BeltPieces = 0, BeltCellsBlocked = 0, Errors = {},
         BeltCells = {}, Built = 0, NotBuilt = 0, SectionsBuilt = 0, SectionsNoFunds = 0,
+        Distributors = 0, DistributorsMissing = 0, SettingsMismatches = 0,
     }
 end
 
@@ -378,11 +401,26 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
         local Ok, Err = pcall(Placer.BuildBelts, CM, Report.BeltCells, Report)
         if not Ok then Report.Errors[#Report.Errors + 1] = "build belts: " .. tostring(Err) end
     end
+    -- Settings last: belt connections and construction (holo sections moved to the built grid)
+    -- happen before.
+    for i, M in pairs(Placed) do
+        local IO = BP.Modules[i].IO
+        if IO and Game.Valid(M) then
+            local Ok, Mismatches = pcall(Settings.ApplyIO, M, IO)
+            if Ok then
+                Report.SettingsMismatches = Report.SettingsMismatches + Mismatches
+            else
+                Report.Errors[#Report.Errors + 1] = "IO settings: " .. tostring(Mismatches)
+            end
+        end
+    end
+    if Options.PasteConveyors then ApplyDistributors(CM, BP, OR, OC, Turns, Report) end
     return Report
 end
 
 function Placer.Summary(R)
-    local S = string.format("Placed %d ghost modules, %d belt pieces, %d wires", R.Modules, R.BeltPieces, R.Links)
+    local S = string.format("Placed %d ghost modules, %d belt pieces, %d distributors, %d wires", R.Modules,
+        R.BeltPieces, R.Distributors, R.Links)
     if R.Built > 0 or R.SectionsBuilt > 0 then
         S = S .. string.format(" | construction: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
     end
@@ -390,6 +428,8 @@ function Placer.Summary(R)
     if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections not built (not enough credits)", R.SectionsNoFunds) end
     if R.ModulesFailed > 0 then S = S .. string.format(" | %d modules blocked (%s)", R.ModulesFailed, R.Errors[1] or "?") end
     if R.BeltCellsBlocked > 0 then S = S .. string.format(" | %d belt cells blocked", R.BeltCellsBlocked) end
+    if R.DistributorsMissing > 0 then S = S .. string.format(" | %d distributors not recreated", R.DistributorsMissing) end
+    if R.SettingsMismatches > 0 then S = S .. string.format(" | %d settings not applied", R.SettingsMismatches) end
     return S
 end
 

@@ -84,13 +84,17 @@ pastes are cancelled when you switch layer.
 
 ## What is copied
 - Modules with rotation, mirroring and production scheme.
+- Module IO cell settings: IO swaps, output filters, output lock, overflow.
 - Conveyor belts (straight lines and turns), on built or holo sections.
-- Distributors (splitters / mergers): recreated from the belts joining them. Their output filters
-  and priorities are not copied.
+- Distributors (splitters / mergers), recreated from the belts joining them, with all their
+  settings: allowed resources, priority, hand-tuned, blocked and locked flags and priority level of
+  each output, priority level of each input. Settings follow the rotation of the paste.
 - Electric wires whose two ends are both copied modules.
 
-Not supported yet: underground belts, storage/logistics settings other than the production scheme.
-Blueprints saved before distributor support must be captured again to include them.
+The paste status reports settings that could not be applied (`N settings not applied`).
+
+Not supported yet: underground belts, storage limits. Blueprints saved before distributor and
+settings support must be captured again to include them.
 
 ## Configuration (`Scripts/config.lua`)
 - `Keys`: hotkeys (avoid letters the game binds: B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z).

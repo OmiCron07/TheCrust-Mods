@@ -7,10 +7,13 @@
 --   Belts    : array of paths, each path = array of {dr, dc, dir} in flow order (dir = ECDirection);
 --              a path starts on the cell feeding it and ends on the distributor it feeds, if any
 --   Links    : { A, B } indices into Modules joined by an electric wire
+--   Distributors : { DR, DC, Outputs, Inputs } settings of each distributor (see settings.lua);
+--              modules also carry IO = IO cell settings
 --   Skipped  : count of unsupported conveyor parts (underground belts)
 
 local Grid = require("grid")
 local Game = require("game")
+local Settings = require("settings")
 
 local Capture = {}
 
@@ -50,6 +53,7 @@ local function CaptureModules(Rect, OR, OC, Geo, Layer)
                 Mirrored = M.IsMirrored == true,
                 Recipe = Game.ModuleRecipe(M),
                 Cells = Cells,
+                IO = Settings.CaptureIO(M),
             }
             ById[M["Module ID"]] = #Modules
         end
@@ -62,7 +66,7 @@ end
 -- so they are not stored: a path fed by a captured belt or distributor starts on that cell, and a
 -- path feeding a distributor ends on its cell.
 local function CaptureBelts(CM, Rect, OR, OC)
-    local Belts, Skipped = {}, 0
+    local Belts, Skipped, Distributors = {}, 0, {}
     CM:UpdateSectionStates()
 
     local Kinds = {}
@@ -71,7 +75,19 @@ local function CaptureBelts(CM, Rect, OR, OC)
             local S = E:get()
             if S.Type == BeltLine or S.Type == Distributor then
                 for _, Cell in ipairs(ArrayToTable(S.CellIds)) do
-                    if Rect.Contains(Grid.ToRowCol(Cell)) then Kinds[Cell] = S.Type end
+                    if Rect.Contains(Grid.ToRowCol(Cell)) then
+                        Kinds[Cell] = S.Type
+                        if S.Type == Distributor then
+                            local Section = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
+                            if not Game.Valid(Section) then Section = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell) end
+                            if Game.Valid(Section) then
+                                local R, C = Grid.ToRowCol(Cell)
+                                local D = Settings.CaptureDistributor(Section)
+                                D.DR, D.DC = R - OR, C - OC
+                                Distributors[#Distributors + 1] = D
+                            end
+                        end
+                    end
                 end
             end
         end)
@@ -150,7 +166,7 @@ local function CaptureBelts(CM, Rect, OR, OC)
     Visit(CM.BuiltSectionStates)
     Visit(CM.HoloSectionStates)
     for _, Path in ipairs(Bridges) do Belts[#Belts + 1] = Path end
-    return Belts, Skipped
+    return Belts, Skipped, Distributors
 end
 
 local LinkStart = "StartNode_7_A30BB1064830FC46F18094A082539283"
@@ -199,7 +215,7 @@ function Capture.FromRect(PC, Layer, R0, C0, R1, C1)
 
     local Geo = Game.Geometry(CM)
     local Modules, ById = CaptureModules(Rect, OR, OC, Geo, Layer)
-    local Belts, Skipped = CaptureBelts(CM, Rect, OR, OC)
+    local Belts, Skipped, Distributors = CaptureBelts(CM, Rect, OR, OC)
     local Links = CaptureLinks(PC, ById)
 
     return {
@@ -207,6 +223,7 @@ function Capture.FromRect(PC, Layer, R0, C0, R1, C1)
         Modules = Modules,
         Belts = Belts,
         Links = Links,
+        Distributors = Distributors,
         Skipped = Skipped,
     }
 end
@@ -214,7 +231,8 @@ end
 function Capture.Summary(BP)
     local Cells = 0
     for _, P in ipairs(BP.Belts) do Cells = Cells + #P end
-    local S = string.format("%d modules, %d belt cells, %d wires", #BP.Modules, Cells, #BP.Links)
+    local S = string.format("%d modules, %d belt cells, %d distributors, %d wires", #BP.Modules, Cells,
+        #(BP.Distributors or {}), #BP.Links)
     if (BP.Skipped or 0) > 0 then
         S = S .. string.format(" (%d underground belt parts not supported)", BP.Skipped)
     end
