@@ -61,6 +61,8 @@ ghosts: modules with their rotation, mirroring and production scheme, holo conve
 electric wires between pasted modules. Build them afterwards with the normal game buttons, or all at
 once with **Build selection**.
 
+![Blueprints panel, annotated](Docs/Images/blueprints-panel.png)
+
 | Key | Action |
 |-----|--------|
 | `K` | Open / close the blueprint manager panel (library: save, place, rename, delete) |
