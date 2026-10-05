@@ -97,7 +97,10 @@ local function WorldRects(Geo, Boxes)
         local X0, Y0 = Game.RowColToWorld(Geo, MinR - 0.5, MinC - 0.5)
         local X1, Y1 = Game.RowColToWorld(Geo, MaxR + 0.5, MaxC + 0.5)
         local Inset = Geo.CellSize * (B.Inset or 0)
-        X0, Y0, X1, Y1 = X0 + Inset, Y0 + Inset, X1 - Inset, Y1 - Inset
+        -- Thin boxes (belt runs) only shrink across their width, so consecutive runs meet at corners.
+        local InsetX = (B.Thin and MaxR > MinR) and 0 or Inset
+        local InsetY = (B.Thin and MaxC > MinC) and 0 or Inset
+        X0, Y0, X1, Y1 = X0 + InsetX, Y0 + InsetY, X1 - InsetX, Y1 - InsetY
         local H = B.Height or 12
         if B.Outline then
             local T = Geo.CellSize * B.Outline
@@ -166,7 +169,7 @@ function Visuals.BlueprintBoxes(BP, OR, OC, Turns, ModuleColor, BeltColor, Valid
             if Extends then
                 Cur[3], Cur[4] = R, C
             else
-                Cur = { R, C, R, C, Color = BeltColor, Height = 6, Inset = 0.25 }
+                Cur = { R, C, R, C, Color = BeltColor, Height = 6, Inset = 0.25, Thin = true }
                 Boxes[#Boxes + 1] = Cur
             end
         end

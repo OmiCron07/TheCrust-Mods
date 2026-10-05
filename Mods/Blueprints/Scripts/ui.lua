@@ -189,8 +189,13 @@ function UI.Create(PC, Position, KeyHelp)
     Layer(Root, Assets.PanelGlow, Colors.Glow)
     Layer(Root, Assets.PanelLine, Colors.Line)
 
+    -- Content padding through a transparent Border (overlay slot padding is not applied).
+    local Content = Make("Border")
+    Content:SetBrushColor({ R = 0, G = 0, B = 0, A = 0 })
+    Content:SetPadding({ Left = 18, Top = 14, Right = 18, Bottom = 16 })
+    Root:AddChildToOverlay(Content)
     local V = Make("VerticalBox")
-    Pad(Root:AddChildToOverlay(V), 16, 12, 16, 14)
+    Content:SetContent(V)
 
     Pad(V:AddChildToVerticalBox(Text("BLUEPRINTS", 20, Colors.Title)), 0, 0, 0, 2)
     StatusText = Text("Ready", 11, Colors.Dim)

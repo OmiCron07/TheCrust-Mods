@@ -3,10 +3,14 @@
 local Grid = require("grid")
 local Storage = require("storage")
 
--- Simulates BuildHolo(start, end, vertical) on a fresh grid: returns the produced cells with directions.
+-- Simulates chained BuildHolo calls as observed in game: a straight line or an L (Vertical = rows
+-- first); a chained piece starts on the previous piece's last cell, which is skipped and becomes a
+-- connected junction (it keeps the previous piece's direction). Returns cells and junction indices.
 local function SimulateHolo(Pieces)
-    local Out = {}
-    local function Walk(R, C, ToR, ToC, AlongRowFirst)
+    local Out, Junctions = {}, {}
+    local function Sign(X) return X > 0 and 1 or (X < 0 and -1 or 0) end
+    for _, P in ipairs(Pieces) do
+        local R, C = P.Start[1], P.Start[2]
         local Cells = { { R, C } }
         local function Step(DR, DC, Steps)
             for _ = 1, Steps do
@@ -14,23 +18,25 @@ local function SimulateHolo(Pieces)
                 Cells[#Cells + 1] = { R, C }
             end
         end
-        local function Sign(X) return X > 0 and 1 or (X < 0 and -1 or 0) end
-        if AlongRowFirst then
+        local ToR, ToC = P.End[1], P.End[2]
+        if P.Vertical then
             Step(Sign(ToR - R), 0, math.abs(ToR - R)); Step(0, Sign(ToC - C), math.abs(ToC - C))
         else
             Step(0, Sign(ToC - C), math.abs(ToC - C)); Step(Sign(ToR - R), 0, math.abs(ToR - R))
         end
-        return Cells
-    end
-    for _, P in ipairs(Pieces) do
-        local Cells = Walk(P.Start[1], P.Start[2], P.End[1], P.End[2], P.Vertical)
         for i, Cell in ipairs(Cells) do
             local Next = Cells[i + 1]
-            Cell[3] = Next and Grid.DirectionBetween(Cell[1], Cell[2], Next[1], Next[2]) or P.LastDir
-            Out[#Out + 1] = Cell
+            Cell[3] = Next and Grid.DirectionBetween(Cell[1], Cell[2], Next[1], Next[2]) or (Out[#Out] and Out[#Out][3])
         end
+        if P.Chained then
+            local Prev = Out[#Out]
+            assert(Prev and Prev[1] == Cells[1][1] and Prev[2] == Cells[1][2], "chained piece must start on the previous end")
+            Junctions[#Out] = true
+            table.remove(Cells, 1)
+        end
+        for _, Cell in ipairs(Cells) do Out[#Out + 1] = Cell end
     end
-    return Out
+    return Out, Junctions
 end
 
 local function Path(Cells)
@@ -39,23 +45,25 @@ local function Path(Cells)
     return P
 end
 
--- Asserts the simulated holo reproduces the path cells and their directions (except the final cell).
+-- Asserts the simulated holo reproduces the path cells in order, each piece boundary is a chained
+-- junction, and directions match everywhere except at junctions and the final cell.
 local function CheckRoundTrip(Name, Cells)
     local P = Path(Cells)
     local Pieces = Grid.BeltPieces(P)
-    for _, Piece in ipairs(Pieces) do Piece.LastDir = Piece.EndDir end
-    local Got = SimulateHolo(Pieces)
+    local Got, Junctions = SimulateHolo(Pieces)
     assert(#Got == #P, Name .. ": cell count " .. #Got .. " ~= " .. #P)
+    local JunctionCount = 0
+    for _ in pairs(Junctions) do JunctionCount = JunctionCount + 1 end
+    assert(JunctionCount == #Pieces - 1, Name .. ": every piece after the first must be chained")
     for i = 1, #P do
         assert(Got[i][1] == P[i][1] and Got[i][2] == P[i][2], Name .. ": cell " .. i .. " differs")
-        if i < #P then
+        if i < #P and not Junctions[i] then
             local Want = Grid.DirectionBetween(P[i][1], P[i][2], P[i + 1][1], P[i + 1][2])
             assert(Got[i][3] == Want, Name .. ": direction at cell " .. i)
         end
     end
     return #Pieces
 end
-
 -- Cell IDs and direction convention (verified in game: 72575 -> 72578 is Right, -400 is Up).
 assert(Grid.Size == 400)
 assert(select(1, Grid.ToRowCol(75806)) == 189 and select(2, Grid.ToRowCol(75806)) == 206)
@@ -84,6 +92,12 @@ CheckRoundTrip("5 turns", { 80578, 80178, 79778, 79777, 79776, 79376, 78976, 789
     78970, 78969, 78968, 78967, 78966, 78965, 78964, 78963, 78962, 78961, 78960, 78959, 79359, 79759, 80159,
     80559, 80959, 81359, 81759, 81758, 81757 })
 CheckRoundTrip("staircase", { 1000, 1001, 1401, 1402, 1802, 1803 })
+-- Two turns, captured from a save (BeltTest): the second turn must be a chained junction.
+local BeltTest = {}
+for Col = 107, 98, -1 do BeltTest[#BeltTest + 1] = Grid.ToCell(104, Col) end
+for Row = 103, 93, -1 do BeltTest[#BeltTest + 1] = Grid.ToCell(Row, 98) end
+for Col = 97, 94, -1 do BeltTest[#BeltTest + 1] = Grid.ToCell(93, Col) end
+assert(CheckRoundTrip("BeltTest", BeltTest) == 2)
 
 -- Contiguity split.
 local Runs = Grid.SplitContiguous({ { 0, 0 }, { 0, 1 }, { 5, 5 }, { 5, 6 } })

@@ -65,13 +65,15 @@ function Grid.SplitContiguous(Path)
     return Runs
 end
 
--- Converts a contiguous belt path into BuildHolo calls.
--- Each piece is { Start = {R, C}, End = {R, C}, Vertical = bool } and covers either one straight
--- segment or two perpendicular segments (an L, whose corner BuildHolo derives from Vertical).
--- A segment is a maximal run of cells sharing the same outgoing direction; the turning cell
--- belongs to the next segment (as in vanilla FCSectionState.CornerCellIDs).
+-- Converts a contiguous belt path into chained BuildHolo calls.
+-- Verified in game: separate BuildHolo calls are NOT connected, even when adjacent, unless the next
+-- call starts ON the last cell of the previous one; the game then skips that shared cell and links
+-- both sections (also around a turn). BuildHolo draws a straight line or an L (Vertical = first leg
+-- along rows), so each piece covers two turns' worth of path: P(j) -> corner P(j+1) -> P(j+2),
+-- the next piece starting on P(j+2).
 -- Path entries may carry their true outgoing direction as [3] (from the source section);
 -- otherwise it is derived from the next cell, the last cell reusing the previous direction.
+-- Returns pieces { Start = {R, C}, End = {R, C}, Vertical = bool, Chained = bool }.
 function Grid.BeltPieces(Path)
     local N = #Path
     if N == 0 then return {} end
@@ -85,42 +87,29 @@ function Grid.BeltPieces(Path)
             or 1
     end
 
-    local Segs = {}
-    for i = 1, N do
-        local Last = Segs[#Segs]
-        if Last and Last.Dir == Dirs[i] then
-            Last.Last = i
-        else
-            Segs[#Segs + 1] = { First = i, Last = i, Dir = Dirs[i] }
-        end
+    -- Polyline points: path start, every turning cell, path end.
+    local Points = { 1 }
+    for i = 2, N do
+        if Dirs[i] ~= Dirs[i - 1] then Points[#Points + 1] = i end
+    end
+    if Points[#Points] ~= N then Points[#Points + 1] = N end
+
+    if #Points == 1 then
+        return { { Start = Path[1], End = Path[1], Vertical = IsVertical(Dirs[1]), Chained = false } }
     end
 
-    -- Partition segments into pieces, avoiding single-cell straight pieces (their direction is ambiguous).
-    -- Best[k] = true when segments k..#Segs can be partitioned; Choice[k] = 1 (straight) or 2 (L).
-    local S = #Segs
-    local Best, Choice = { [S + 1] = true }, {}
-    for k = S, 1, -1 do
-        local Len = Segs[k].Last - Segs[k].First + 1
-        if k + 1 <= S and Best[k + 2] then
-            Best[k], Choice[k] = true, 2
-        elseif Len >= 2 and Best[k + 1] then
-            Best[k], Choice[k] = true, 1
-        end
-    end
-
-    local Pieces, k = {}, 1
-    while k <= S do
-        local Take = Choice[k] or 1 -- Fallback: ambiguous single cell, kept as straight piece.
-        local A, B = Segs[k], Segs[k + Take - 1]
+    local Pieces, j = {}, 1
+    while j < #Points do
+        local Last = math.min(j + 2, #Points)
+        local A = Points[j]
         Pieces[#Pieces + 1] = {
-            Start = Path[A.First],
-            End = Path[B.Last],
-            Vertical = IsVertical(A.Dir),
-            EndDir = B.Dir,
+            Start = Path[A],
+            End = Path[Points[Last]],
+            Vertical = IsVertical(Dirs[A]),
+            Chained = j > 1,
         }
-        k = k + Take
+        j = Last
     end
     return Pieces
 end
-
 return Grid
