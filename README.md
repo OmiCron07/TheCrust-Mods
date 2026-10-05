@@ -4,8 +4,8 @@ Mods for [The Crust](https://store.steampowered.com/app/1465470/The_Crust/) (Unr
 mostly Lua mods running on [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS), plus the modding toolkit and research notes
 used to build them.
 
-[![Buy Me a Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://www.buymeacoffee.com/litpixi)
-[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/litpixi)
+<a href="https://www.buymeacoffee.com/litpixi"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="32"></a>
+<a href="https://ko-fi.com/litpixi"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Ko-fi" height="32"></a>
 
 | Mod | What it does | Download |
 |-----|--------------|----------|
