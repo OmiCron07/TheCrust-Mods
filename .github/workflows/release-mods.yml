@@ -1,0 +1,52 @@
+name: Release mods
+
+# Builds one zip per mod plus an all-mods zip and publishes them as a GitHub release.
+# Runs only when shipped mod files change (docs and the DevBridge dev tool are ignored).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Mods/**"
+      - "!Mods/**/*.md"
+      - "!Mods/DevBridge/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-mods
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Build zips
+        shell: pwsh
+        run: ./Scripts/Build-ModRelease.ps1
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          tag="v$(date -u +%Y.%m.%d)-${GITHUB_RUN_NUMBER}"
+          # Manual runs and first pushes have no usable "before" commit: list the last mod commit only.
+          if [ -n "$BEFORE" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            range="${BEFORE}..${GITHUB_SHA}"
+          else
+            range="-1"
+          fi
+          {
+            echo "Extract a zip into the game root folder (the one containing \`TheCrust\`). Requires UE4SS v3."
+            echo "See the [README](https://github.com/${GITHUB_REPOSITORY}#installation) for details."
+            echo
+            echo "## Changes"
+            git log --format='- %s (%h)' $range -- Mods ':(exclude)Mods/DevBridge' ':(exclude)*.md'
+          } > notes.md
+          gh release create "$tag" dist/*.zip --title "Mods $tag" --notes-file notes.md --latest

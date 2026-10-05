@@ -22,12 +22,12 @@ By default in **The Crust**, scrolling the mouse wheel zooms the camera strictly
 - `DebugLogging` (boolean, default: `false`): Prints real-time coordinates and shifts to UE4SS console/log.
 
 ## Installation
-Run the deployment script from PowerShell:
-```pwsh
-.\Scripts\Deploy-Lua-Mod.ps1 -ModSourceDir "K:\GameMods\TheCrust\Mods\ZoomToCursor"
-```
-Or manually copy the `ZoomToCursor` folder into:
-`<The Crust Install>\TheCrust\Binaries\Win64\ue4ss\Mods\`
-and ensure `ZoomToCursor : 1` is present in `mods.txt`.
+Download `TheCrust-ZoomToCursor.zip` from the latest GitHub release and extract it into the game root
+folder (the one containing `TheCrust`).
 
-The deploy script overwrites `config.lua`; to keep a customized config, copy only `Scripts/main.lua`. Quit the game before deploying: the UE4SS auto-reload of a mod hooking `GodPawn_C:ArmLenght` usually crashes the game.
+From the repo, run the deployment script from PowerShell:
+```pwsh
+.\Scripts\Deploy-Lua-Mod.ps1 -ModSourceDir "<repo>\Mods\ZoomToCursor"
+```
+
+Both overwrite `config.lua`; to keep a customized config, copy only `Scripts/main.lua`. Quit the game before installing or deploying: the UE4SS auto-reload of a mod hooking `GodPawn_C:ArmLenght` usually crashes the game.

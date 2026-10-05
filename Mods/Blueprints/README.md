@@ -51,10 +51,11 @@ input), storage/logistics settings other than the production scheme.
 The library is stored in `library.lua` next to the `Scripts` folder.
 
 ## Installation
-```pwsh
-.\Scripts\Deploy-Lua-Mod.ps1 -ModSourceDir "K:\GameMods\TheCrust\Mods\Blueprints"
-```
+Download `TheCrust-Blueprints.zip` from the latest GitHub release and extract it into the game root
+folder (the one containing `TheCrust`). Updating keeps the library (`library.lua` is not in the zip)
+but overwrites `Scripts/config.lua`.
 
 ## Development
+- Deploy from the repo: `.\Scripts\Deploy-Lua-Mod.ps1 -ModSourceDir "<repo>\Mods\Blueprints"`.
 - `Scripts/selftest.lua`: pure checks (grid math, belt decomposition, serialization), runnable with any Lua 5.4.
 - Research notes: `Knowledge/Research/BuildingSystemAndBlueprints.md`.
