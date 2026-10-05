@@ -1,20 +1,23 @@
 # The Crust Mods
 
-Lua mods for [The Crust](https://store.steampowered.com/app/1465470/The_Crust/) (Unreal Engine 4.27),
-running on [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS), plus the modding toolkit and research notes
+Mods for [The Crust](https://store.steampowered.com/app/1465470/The_Crust/) (Unreal Engine 4.27),
+mostly Lua mods running on [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS), plus the modding toolkit and research notes
 used to build them.
 
 | Mod | What it does | Download |
 |-----|--------------|----------|
 | [Blueprints](#blueprints) | Copy / paste areas of your base and save them as reusable blueprints | [TheCrust-Blueprints.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-Blueprints.zip) |
 | [ZoomToCursor](#zoomtocursor) | Mouse wheel zooms toward the cursor instead of the screen center | [TheCrust-ZoomToCursor.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-ZoomToCursor.zip) |
-| All mods | Both mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
+| [SkipIntro](#skipintro) | Skips the startup logo videos (story cinematics kept), no UE4SS needed | [TheCrust-SkipIntro.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-SkipIntro.zip) |
+| All mods | All the mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
 
 All releases: [Releases](https://github.com/OmiCron07/TheCrust-Mods/releases).
 
 ## Installation
 
-### 1. Install UE4SS (once)
+### 1. Install UE4SS (once, for the Lua mods)
+Not needed for SkipIntro alone.
+
 1. Download UE4SS v3 from the [RE-UE4SS releases](https://github.com/UE4SS-RE/RE-UE4SS/releases)
    (the mods are tested with v3.0.2, from the `experimental-latest` release: take `UE4SS_v3.x.zip`, not
    the `zDEV` one).
@@ -30,19 +33,25 @@ All releases: [Releases](https://github.com/OmiCron07/TheCrust-Mods/releases).
    ```
    The Crust\
    ├── INSTALL-<Mod>.txt                      (instructions, can be deleted)
-   └── TheCrust\Binaries\Win64\ue4ss\Mods\<Mod>\
-       ├── enabled.txt                        (makes UE4SS load the mod, no mods.txt edit needed)
-       └── Scripts\*.lua
+   └── TheCrust\
+       ├── Binaries\Win64\ue4ss\Mods\<Mod>\     (Lua mods)
+       │   ├── enabled.txt                    (makes UE4SS load the mod, no mods.txt edit needed)
+       │   └── Scripts\*.lua
+       └── Content\Movies\*.mp4               (SkipIntro, overwrites the startup videos)
    ```
 3. Start the game.
 
 ### Update
 Quit the game, then extract the new zip the same way. This overwrites `Scripts\config.lua`: back it up
 first if you customized it. The Blueprints library (`library.lua`) is not in the zip and is kept.
+A game update or a Steam file verification restores the original startup videos: extract
+`TheCrust-SkipIntro.zip` again afterwards.
 
 ### Uninstall
 Delete `TheCrust\Binaries\Win64\ue4ss\Mods\<Mod>`. To only disable a mod, delete its `enabled.txt`
 (and make sure `ue4ss\Mods\mods.txt` does not list `<Mod> : 1`).
+SkipIntro: `Steam > Library > The Crust > right click > Properties > Installed Files > Verify integrity
+of game files` restores the original videos.
 
 ## Mods
 
@@ -79,13 +88,21 @@ instead of the screen center.
 
 Full documentation: [Mods/ZoomToCursor/README.md](Mods/ZoomToCursor/README.md).
 
+### SkipIntro
+Replaces the three startup videos (Unreal Engine logo, publisher and developer logos, title reveal) in
+`TheCrust\Content\Movies` with a 0.04 s blank video, so the game reaches the main menu faster. The
+campaign intro cinematics are not touched. The `-nomovies` launch option does not work for this game.
+
+Full documentation: [Mods/SkipIntro/README.md](Mods/SkipIntro/README.md).
+
 ## Troubleshooting
 - Nothing happens in game: check `TheCrust\Binaries\Win64\ue4ss\UE4SS.log` for the
   `Mod '<Mod>' has enabled.txt, starting mod.` line and Lua errors.
 - Quit the game before installing or updating a mod: the UE4SS hot reload of these mods can crash the game.
 
 ## Development
-- `Mods/`: mod sources (`DevBridge` is a development tool and is never released).
+- `Mods/`: mod sources. A folder with `Scripts/main.lua` is a Lua mod; a folder with a `TheCrust/`
+  subfolder ships that tree as is (game files mod). `DevBridge` is a development tool, never released.
 - `Scripts/`: PowerShell tooling (UE4SS setup, deploy, pak tools, `Build-ModRelease.ps1`).
 - `Knowledge/`: research notes and playbooks ([OKF](https://github.com/okfcli/okf) bundle).
 
@@ -102,5 +119,5 @@ Build the release zips locally (output in `dist/`):
 ### Release pipeline
 [`.github/workflows/release-mods.yml`](.github/workflows/release-mods.yml) runs on every push to `main`
 that changes shipped mod files (Markdown files and `Mods/DevBridge` are ignored), or manually from the
-Actions tab. It builds one zip per mod plus `TheCrust-AllMods.zip` and publishes them as a new GitHub
+Actions tab. It builds one zip per mod (every `Mods/*` folder except `DevBridge`) plus `TheCrust-AllMods.zip` and publishes them as a new GitHub
 release marked as latest, so the download links above always point to the newest build.
