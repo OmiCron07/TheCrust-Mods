@@ -4,6 +4,9 @@ Mods for [The Crust](https://store.steampowered.com/app/1465470/The_Crust/) (Unr
 mostly Lua mods running on [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS), plus the modding toolkit and research notes
 used to build them.
 
+[![Buy Me a Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://www.buymeacoffee.com/litpixi)
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/litpixi)
+
 | Mod | What it does | Download |
 |-----|--------------|----------|
 | [Blueprints](#blueprints) | Copy / paste areas of your base and save them as reusable blueprints | [TheCrust-Blueprints.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-Blueprints.zip) |
@@ -101,6 +104,11 @@ Full documentation: [Mods/SkipIntro/README.md](Mods/SkipIntro/README.md).
 - Nothing happens in game: check `TheCrust\Binaries\Win64\ue4ss\UE4SS.log` for the
   `Mod '<Mod>' has enabled.txt, starting mod.` line and Lua errors.
 - Quit the game before installing or updating a mod: the UE4SS hot reload of these mods can crash the game.
+
+## Support
+If these mods save you some time, you can support their development:
+- [Buy Me a Coffee](https://www.buymeacoffee.com/litpixi)
+- [Ko-fi](https://ko-fi.com/litpixi)
 
 ## Development
 - `Mods/`: mod sources. A folder with `Scripts/main.lua` is a Lua mod; a folder with a `TheCrust/`

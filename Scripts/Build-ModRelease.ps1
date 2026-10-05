@@ -91,6 +91,12 @@ Uninstall
 ---------
 $uninstall
 
+Support
+-------
+If this mod saves you some time, you can support its development:
+https://www.buymeacoffee.com/litpixi
+https://ko-fi.com/litpixi
+
 Mod documentation
 -----------------
 

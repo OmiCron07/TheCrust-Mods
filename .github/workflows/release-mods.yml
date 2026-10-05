@@ -46,6 +46,8 @@ jobs:
             echo "Extract a zip into the game root folder (the one containing \`TheCrust\`). Lua mods require UE4SS v3."
             echo "See the [README](https://github.com/${GITHUB_REPOSITORY}#installation) for details."
             echo
+            echo "Support the mods: [Buy Me a Coffee](https://www.buymeacoffee.com/litpixi) · [Ko-fi](https://ko-fi.com/litpixi)"
+            echo
             echo "## Changes"
             git log --format='- %s (%h)' $range -- Mods ':(exclude)Mods/DevBridge' ':(exclude)*.md'
           } > notes.md
