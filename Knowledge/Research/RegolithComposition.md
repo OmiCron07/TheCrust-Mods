@@ -27,6 +27,8 @@ Explain what happens to deposit composition when regolith from several extractor
   - Slag in a 2-output recipe (single refinery: oxide + slag): `(1 - p[oxide]) * R`.
   - Amounts go through `TrimResourceFloatWithCollectingExcess` (fractional carry-over).
 - Slag-input recipes (Multi refinery on slag) are NOT enrichment: fixed recipe amounts.
+- Cycle start gate (`CanStartProductionCycleDueInputAndOutputResources` -> `CheckIfCanStoreAllResourcesByRule`) checks free space for the recipe's NOMINAL `To` amount of EVERY output, not the composition-scaled amount. One full output storage (even an oxide at 0 %) stalls the whole refinery.
+- Throughput per cycle is fixed (`R`), independent of composition: a refinery fed iron-rich regolith yields more IronOxide per minute than one fed a blend; the blend redistributes the same `R` across oxides.
 - Consequence: Multi refinery output is linear in composition, so merging all extractors into one bulk storage yields the same total oxides as separate lines. Single refinery loses everything except the selected oxide to slag, so mixing dilutes its yield.
 
 ## Pitfalls & Dead Ends
