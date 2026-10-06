@@ -1,5 +1,6 @@
 -- World-space overlay boxes (selection rectangle, paste preview) built from a pool of
--- StaticMeshActors using the engine cube and a dynamic translucent material.
+-- StaticMeshActors using the engine cube and a dynamic translucent material, plus the paste
+-- preview belts drawn with the game's own belt meshes as blue holograms.
 
 local Grid = require("grid")
 local Game = require("game")
@@ -16,6 +17,12 @@ local ColorParams = { "Color", "BaseColor", "Tint" }
 
 local Pool = {}
 local Mesh, Material
+local BeltHost -- overlay box whose cube is hidden, carrying one instanced mesh component per belt type
+
+-- Per-instance custom data of the belt materials (16 floats): [9] = 1 alone draws the blue holo;
+-- built belts use [8] = [9] = 1, planning ghosts [9] = [10] = 1. [3] is 1 on every vanilla belt.
+local BeltCustomData = { [3] = 1, [9] = 1 }
+local BeltCustomDataCount = 16
 
 local function LoadObject(Path)
     local Obj = StaticFindObject(Path)
@@ -71,7 +78,7 @@ end
 
 -- Drops actor references without touching them (they may belong to a destroyed world).
 function Visuals.Forget()
-    Pool = {}
+    Pool, BeltHost = {}, nil
 end
 
 -- Destroys overlay actors left behind by a previous instance of the mod (hot reload).
@@ -141,6 +148,77 @@ function Visuals.Hide()
     for _, Box in ipairs(Pool) do
         if Game.Valid(Box.Actor) then Box.Actor:SetActorHiddenInGame(true) end
     end
+    if BeltHost and Game.Valid(BeltHost.Actor) then BeltHost.Actor:SetActorHiddenInGame(true) end
+end
+
+local Identity = {
+    Rotation = { X = 0, Y = 0, Z = 0, W = 1 },
+    Translation = { X = 0, Y = 0, Z = 0 },
+    Scale3D = { X = 1, Y = 1, Z = 1 },
+}
+
+-- Instanced copy of the game's level 0 belt mesh of that type (from VisualManager, a holo
+-- UCSectionVisualManager). The custom data count must be set before the component registers.
+local function NewBeltComponent(VisualManager, Type)
+    local Src = VisualManager:GetHismByTypeAndLevel(Type, 0)
+    if not Game.Valid(Src) then return nil end
+    local Cls = StaticFindObject("/Script/Engine.InstancedStaticMeshComponent")
+    local Comp = BeltHost.Actor:AddComponentByClass(Cls, false, Identity, true)
+    Comp.NumCustomDataFloats = BeltCustomDataCount
+    BeltHost.Actor:FinishAddComponent(Comp, false, Identity)
+    Comp:SetStaticMesh(Src.StaticMesh)
+    for i = 0, Src:GetNumMaterials() - 1 do Comp:SetMaterial(i, Src:GetMaterial(i)) end
+    Comp:SetCollisionEnabled(0)
+    Comp:SetCastShadow(false)
+    return Comp
+end
+
+-- Pieces: array of { Type, Row, Col, Yaw } (Grid.BeltVisuals). Moving the same blueprint only
+-- updates instance transforms; a different piece count per type rebuilds that type's instances.
+function Visuals.ShowBelts(PC, Geo, VisualManager, Pieces)
+    if not EnsureAssets() then return false end
+    if not (BeltHost and Game.Valid(BeltHost.Actor)) then
+        BeltHost = NewBox(PC)
+        BeltHost.Comp:SetVisibility(false, false)
+        BeltHost.Actor:K2_SetActorLocation(Identity.Translation, false, {}, false)
+        BeltHost.Types = {}
+    end
+    local Z = Geo.Z + VisualManager.ConveyorHeight
+    local ByType = {}
+    for _, P in ipairs(Pieces) do
+        local List = ByType[P[1]] or {}
+        ByType[P[1]] = List
+        local X, Y = Game.RowColToWorld(Geo, P[2], P[3])
+        local Half = math.rad(P[4]) / 2
+        List[#List + 1] = {
+            Rotation = { X = 0, Y = 0, Z = math.sin(Half), W = math.cos(Half) },
+            Translation = { X = X, Y = Y, Z = Z },
+            Scale3D = { X = 1, Y = 1, Z = 1 },
+        }
+    end
+    for Type, List in pairs(ByType) do
+        local Comp = BeltHost.Types[Type]
+        if not Game.Valid(Comp) then
+            Comp = NewBeltComponent(VisualManager, Type)
+            BeltHost.Types[Type] = Comp
+        end
+        if Comp and Comp:GetInstanceCount() == #List then
+            Comp:BatchUpdateInstancesTransforms(0, List, true, true, true)
+        elseif Comp then
+            Comp:ClearInstances()
+            Comp:AddInstances(List, false)
+            for i = 0, #List - 1 do
+                for Index, Value in pairs(BeltCustomData) do
+                    Comp:SetCustomDataValue(i, Index, Value, i == #List - 1)
+                end
+            end
+        end
+    end
+    for Type, Comp in pairs(BeltHost.Types) do
+        if not ByType[Type] and Game.Valid(Comp) then Comp:ClearInstances() end
+    end
+    BeltHost.Actor:SetActorHiddenInGame(false)
+    return true
 end
 
 -- Builds preview boxes of a blueprint placed on (OR, OC) rotated by Turns.
@@ -158,6 +236,7 @@ function Visuals.BlueprintBoxes(BP, OR, OC, Turns, ModuleColor, BeltColor, Valid
         end
         if R0 then Boxes[#Boxes + 1] = { R0, C0, R1, C1, Color = Color, Height = 30, Inset = 0.05, Outline = 0.12 } end
     end
+    if not BeltColor then return Boxes end -- Belts drawn by Visuals.ShowBelts instead.
     -- Merge straight runs of belt cells into single boxes.
     for _, Path in ipairs(BP.Belts) do
         local Cur

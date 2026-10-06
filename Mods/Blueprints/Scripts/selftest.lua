@@ -126,6 +126,31 @@ for Row = 103, 93, -1 do BeltTest[#BeltTest + 1] = Grid.ToCell(Row, 98) end
 for Col = 97, 94, -1 do BeltTest[#BeltTest + 1] = Grid.ToCell(93, Col) end
 assert(CheckRoundTrip("BeltTest", BeltTest) == 2)
 
+-- Belt visual yaws against vanilla section visuals measured in game (key = entry > exit direction).
+local Delta = { [0] = { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } }
+local Measured = {
+    ["0>0"] = 180, ["1>1"] = 90, ["2>2"] = 0, ["3>3"] = 270,
+    ["0>1"] = 180, ["0>3"] = 90, ["1>0"] = 0, ["1>2"] = 90, ["2>1"] = 270, ["2>3"] = 0, ["3>0"] = 270, ["3>2"] = 180,
+}
+for Key, Want in pairs(Measured) do
+    local In, Out = tonumber(Key:sub(1, 1)), tonumber(Key:sub(3, 3))
+    local Bp = { Belts = { { { -Delta[In][1], -Delta[In][2], In }, { 0, 0, Out }, { Delta[Out][1], Delta[Out][2], Out } } } }
+    local P = Grid.BeltVisuals(Bp, 10, 10, 0)[2]
+    assert(P[2] == 10 and P[3] == 10 and P[4] % 360 == Want, "belt visual " .. Key .. ": " .. P[4])
+    assert(P[1] == (In == Out and Grid.VisualLine or Grid.VisualCorner), "belt visual type " .. Key)
+end
+local Ug = Grid.BeltVisuals({ Belts = {}, Undergrounds = { { { 0, 4 }, { 0, 0 }, 3 } } }, 0, 0, 0)
+assert(Ug[1][4] % 360 == 90 and Ug[2][4] % 360 == 270, "underground yaws")
+-- A quarter turn of the layout adds 90 degrees to every piece but distributors, always at yaw 0.
+local Layout = { Belts = Src.Belts, Undergrounds = Src.Undergrounds, Distributors = Src.Distributors }
+local A0, A1 = Grid.BeltVisuals(Layout, 50, 50, 0), Grid.BeltVisuals(Layout, 50, 50, 1)
+assert(#A0 == #A1)
+for i = 1, #A0 do
+    local DR, DC = Grid.Rotate(A0[i][2] - 50, A0[i][3] - 50, 1)
+    local Turn = A0[i][1] == Grid.VisualSplitter and 0 or 90
+    assert(A1[i][2] == 50 + DR and A1[i][3] == 50 + DC and (A1[i][4] - A0[i][4] - Turn) % 360 == 0, "rotated piece " .. i)
+end
+
 -- Contiguity split.
 local Runs = Grid.SplitContiguous({ { 0, 0 }, { 0, 1 }, { 5, 5 }, { 5, 6 } })
 assert(#Runs == 2 and #Runs[1] == 2 and #Runs[2] == 2)

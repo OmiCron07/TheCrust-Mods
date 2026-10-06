@@ -72,12 +72,12 @@ pastes are cancelled when you switch layer.
 | Right click | Cancel / clear the selection, stop pasting |
 
 ### Paste preview
-- Every module is shown as its vanilla blue hologram, like in the building mode.
+- Every module and belt is shown as its vanilla blue hologram, like in the building mode.
 - Cyan outline: the module can be placed there; red outline: it cannot (overlap, undug ground,
   or the module's own rule).
 - Extractors: their active cells are shown as small squares, green on an ore vein, red elsewhere;
   the outline turns cyan once enough cells cover a vein (vanilla rule).
-- Orange strips: conveyor belts (cells already used are skipped when pasting).
+- Belt cells already used are skipped when pasting.
 - A blueprint made on the other layer can still be pasted; the status line mentions it.
 
 ### Paste modes

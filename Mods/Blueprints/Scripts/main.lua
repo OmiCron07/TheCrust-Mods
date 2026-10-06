@@ -256,12 +256,14 @@ local function TickPasting(PC, LeftPressed, RightPressed)
     if Cell ~= P.Cell or P.Dirty then
         P.Cell, P.Dirty = Cell, false
         local Valid, Veins = Preview.Evaluate(State.Geo, P.BP, OR, OC, P.Turns)
-        local Boxes = Visuals.BlueprintBoxes(P.BP, OR, OC, P.Turns, Colors.Module, Colors.Belt, Valid, Colors.Invalid)
+        local Boxes = Visuals.BlueprintBoxes(P.BP, OR, OC, P.Turns, Colors.Module, nil, Valid, Colors.Invalid)
         for _, V in ipairs(Veins) do
             local R, C = Grid.ToRowCol(V[1])
             Boxes[#Boxes + 1] = { R, C, R, C, Color = V[2] and Colors.VeinOn or Colors.VeinOff, Height = 16, Inset = 0.3 }
         end
         Visuals.Show(PC, State.Geo, Boxes)
+        local CM = Game.ConveyorManager(PC, State.Layer)
+        Visuals.ShowBelts(PC, State.Geo, CM.HoloSectionVisualManager, Grid.BeltVisuals(P.BP, OR, OC, P.Turns))
     end
     if LeftPressed and not UI.IsHovered() then
         local Options = {

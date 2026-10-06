@@ -117,4 +117,69 @@ function Grid.BeltPieces(Path)
     end
     return Pieces
 end
+
+-- Belt mesh types (ECVisualCellType) drawn by the paste preview.
+Grid.VisualLine, Grid.VisualCorner, Grid.VisualSplitter, Grid.VisualUnderground = 1, 2, 3, 5
+
+-- Mesh pieces drawing BP's belts with its origin on (OR, OC), rotated by Turns quarter turns.
+-- Yaws measured on vanilla sections (UCSectionVisualManager:GetSectionVisualArrays): straight cell
+-- (2 - Dir) * 90; corner touching sides A and A + 1 (side = direction from the cell) (3 - A) * 90,
+-- whatever the flow; distributor 0; underground end -D * 90, D pointing at the other end.
+-- Returns an array of { Type, Row, Col, Yaw }.
+function Grid.BeltVisuals(BP, OR, OC, Turns)
+    local Pieces, Special, Cells = {}, {}, {}
+    local function Abs(DR, DC)
+        DR, DC = Grid.Rotate(DR, DC, Turns)
+        return OR + DR, OC + DC
+    end
+    for _, D in ipairs(BP.Distributors or {}) do
+        local R, C = Abs(D.DR, D.DC)
+        if not Special[Grid.ToCell(R, C)] then
+            Special[Grid.ToCell(R, C)] = true
+            Pieces[#Pieces + 1] = { Grid.VisualSplitter, R, C, 0 }
+        end
+    end
+    for _, U in ipairs(BP.Undergrounds or {}) do
+        local Dir = Grid.RotateDir(U[3], Turns)
+        for k, Toward in ipairs({ Dir, (Dir + 2) % 4 }) do
+            local R, C = Abs(U[k][1], U[k][2])
+            Special[Grid.ToCell(R, C)] = true
+            Pieces[#Pieces + 1] = { Grid.VisualUnderground, R, C, -Toward * 90 }
+        end
+    end
+    -- Entry / exit direction per cell; a cell shared by two paths (feeding cell) keeps the first seen.
+    local Order = {}
+    for _, Path in ipairs(BP.Belts) do
+        local Abs2 = {}
+        for i, P in ipairs(Path) do Abs2[i] = { Abs(P[1], P[2]) } end
+        for i, P in ipairs(Path) do
+            local R, C = Abs2[i][1], Abs2[i][2]
+            local Prev, Next = Abs2[i - 1], Abs2[i + 1]
+            local In = Prev and Grid.DirectionBetween(Prev[1], Prev[2], R, C)
+            local Out = (P[3] and Grid.RotateDir(P[3], Turns)) or (Next and Grid.DirectionBetween(R, C, Next[1], Next[2]))
+            local Id = Grid.ToCell(R, C)
+            local E = Cells[Id]
+            if not E then
+                E = { R, C }
+                Cells[Id] = E
+                Order[#Order + 1] = Id
+            end
+            E.In, E.Out = E.In or In, E.Out or Out
+        end
+    end
+    for _, Id in ipairs(Order) do
+        local E = Cells[Id]
+        if not Special[Id] then
+            local In, Out = E.In or E.Out or 2, E.Out or E.In or 2
+            if (In - Out) % 2 == 0 then
+                Pieces[#Pieces + 1] = { Grid.VisualLine, E[1], E[2], (2 - Out) * 90 }
+            else
+                local A, B = (In + 2) % 4, Out
+                local Low = (A + 1) % 4 == B and A or B
+                Pieces[#Pieces + 1] = { Grid.VisualCorner, E[1], E[2], (3 - Low) * 90 }
+            end
+        end
+    end
+    return Pieces
+end
 return Grid
