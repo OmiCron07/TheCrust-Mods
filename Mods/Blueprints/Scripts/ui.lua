@@ -39,6 +39,7 @@ local Rows = {}         -- { Box, Label, DeleteLabel }
 local Page = 0
 local AnyPressed = false
 local PendingDelete     -- library index awaiting delete confirmation
+local PendingConfirm    -- Confirm button awaiting its second click
 local Visible = false
 local Loaded = {}
 
@@ -105,7 +106,8 @@ local function Pad(Slot, L, T, R, B)
     pcall(function() Slot:SetPadding({ Left = L, Top = T, Right = R or L, Bottom = B or T }) end)
 end
 
-local function Button(Label, Action, Arg, Tint)
+-- Confirm: the first click only turns the label into "Confirm?" (any other button resets it).
+local function Button(Label, Action, Arg, Tint, Confirm)
     local B = Make("Button")
     pcall(function()
         local Style = B.WidgetStyle
@@ -117,7 +119,7 @@ local function Button(Label, Action, Arg, Tint)
     end)
     local T = Text(Label, 12)
     B:SetContent(T)
-    Buttons[#Buttons + 1] = { Widget = B, Action = Action, Arg = Arg }
+    Buttons[#Buttons + 1] = { Widget = B, Action = Action, Arg = Arg, Label = T, Text = Label, Confirm = Confirm }
     return B, T
 end
 
@@ -162,13 +164,13 @@ end
 function UI.Forget()
     Root, Panel, StatusText, SelectionText, NameBox, PageText, ModeLabel = nil, nil, nil, nil, nil, nil, nil
     AnyPressed = false
-    Buttons, Rows, Visible, PendingDelete, Loaded = {}, {}, false, nil, {}
+    Buttons, Rows, Visible, PendingDelete, PendingConfirm, Loaded = {}, {}, false, nil, nil, {}
 end
 
 -- KeyHelp: array of { Keys, Description } shown in the Keybinds section.
 function UI.Create(PC, Position, KeyHelp)
     UI.CleanupLeftovers()
-    Buttons, Rows, Counter = {}, {}, 0
+    Buttons, Rows, Counter, PendingConfirm = {}, {}, 0, nil
     Instance = string.format("%x%04x", os.time(), math.random(0, 0xFFFF))
     Panel = New("UserWidget", PC, PanelName .. "_" .. Instance)
     Panel.WidgetTree = New("WidgetTree", Panel, PanelName .. "_" .. Instance .. "_Tree")
@@ -210,7 +212,12 @@ function UI.Create(PC, Position, KeyHelp)
     })
     local ModeButton
     ModeButton, ModeLabel = Button("Paste as: Plan", "TogglePasteMode")
-    HRow(V, { ModeButton, (Button("Build selection", "BuildSelection", nil, Colors.Green)) })
+    HRow(V, {
+        ModeButton,
+        (Button("Build selection", "BuildSelection", nil, Colors.Green)),
+        (Button("Cut", "Cut")),
+        (Button("Delete", "DeleteSelection", nil, Colors.Red, true)),
+    })
     SelectionText = Text("No selection", 11, Colors.Dim)
     Pad(V:AddChildToVerticalBox(SelectionText), 0, 4)
 
@@ -321,7 +328,15 @@ function UI.Poll()
         AnyPressed = AnyPressed or Pressed
         if B.WasPressed and not Pressed and B.Widget:IsHovered() then
             local Index = B.Arg and (Page * RowsPerPage + B.Arg)
-            if B.Action == "PrevPage" then
+            local Confirming = PendingConfirm
+            if Confirming then
+                PendingConfirm = nil
+                Confirming.Label:SetText(FText(Confirming.Text))
+            end
+            if B.Confirm and Confirming ~= B then
+                PendingConfirm = B
+                B.Label:SetText(FText("Confirm?"))
+            elseif B.Action == "PrevPage" then
                 Page = Page - 1
             elseif B.Action == "NextPage" then
                 Page = Page + 1

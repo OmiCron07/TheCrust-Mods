@@ -399,6 +399,103 @@ function Placer.BuildArea(PC, Layer, R0, C0, R1, C1)
     return Report
 end
 
+-- Removes the modules and belts of a cell rectangle (inclusive) through the vanilla demolition tool
+-- paths (GodPlayer_PC "LMB for Demolition"): ToggleModuleDismantle on modules (planned ghosts vanish,
+-- built modules get the dismantle order), HoverOnDestruction + DeleteWindowedCells + BP_RecoupCollected
+-- on built belts (refunded), DeleteHoloSectionAtCellID on holo belts. Only the modules a capture of the
+-- rectangle copies are touched, and belt cells whose deletion would reach outside the rectangle are kept.
+function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
+    local Report = { Modules = 0, ModulesKept = 0, BeltCells = 0, BeltCellsKept = 0, Errors = {} }
+    local CM = Game.ConveyorManager(PC, Layer)
+    local Geo = Game.Geometry(CM)
+    local function Inside(Cell)
+        if not Cell or Cell < 0 then return false end
+        local R, C = Grid.ToRowCol(Cell)
+        return R >= R0 and R <= R1 and C >= C0 and C <= C1
+    end
+
+    for _, M in ipairs(Game.LayerModules(Layer)) do
+        local Loc = M:K2_GetActorLocation()
+        local Row, Col = Game.WorldToRowCol(Geo, Loc.X, Loc.Y)
+        Row, Col = math.floor(Row + 0.5), math.floor(Col + 0.5)
+        local Agency = M.BuildingAgency
+        if Row >= R0 and Row <= R1 and Col >= C0 and Col <= C1 and Game.IsCopyAllowed(M) and not M.IsFromPackage
+            and not (Game.Valid(Agency) and Agency.MarkedOnDismantle) then
+            local Ok, Err = pcall(function()
+                if M:ActorHasTag(FName("LockedDemolition")) then return end
+                PC:ToggleModuleDismantle(M)
+            end)
+            if not Ok then Report.Errors[#Report.Errors + 1] = "dismantle: " .. tostring(Err) end
+            if not Game.Valid(M) or (Game.Valid(Agency) and Agency.MarkedOnDismantle) or M.BuildingStateCPP >= 6 then
+                Report.Modules = Report.Modules + 1
+            else
+                Report.ModulesKept = Report.ModulesKept + 1
+            end
+        end
+    end
+
+    local function Cells(Arr)
+        local T = {}
+        Arr:ForEach(function(_, V) T[#T + 1] = V:get() end)
+        return T
+    end
+    local function AllInside(List)
+        for _, Cell in ipairs(List) do
+            if not Inside(Cell) then return false end
+        end
+        return true
+    end
+    -- Both ends of an underground pair go together (a capture skips pairs cut by the selection).
+    local function PairInside(S)
+        return S:GetSectionType() ~= 3 or Inside(S.State.ConnectedUndergroundBeltCellID)
+    end
+
+    local PrevMode = CM:GetConveyorMode()
+    CM:SetConveyorMode(2) -- Vanilla demolition mode (GodPlayer_PC StartDeconstruct).
+    local Ok, Err = pcall(function()
+        for R = R0, R1 do
+            for C = C0, C1 do
+                local Cell = Grid.ToCell(R, C)
+                local Holo = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell)
+                local Built = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
+                if Game.Valid(Holo) then
+                    local List = Cells(Holo.State.CellIds)
+                    if AllInside(List) and PairInside(Holo) then
+                        CM:DeleteHoloSectionAtCellID(Cell)
+                        Report.BeltCells = Report.BeltCells + #List
+                    else
+                        Report.BeltCellsKept = Report.BeltCellsKept + 1
+                    end
+                elseif Game.Valid(Built) then
+                    -- The demolition hover picks the cells a click deletes (LastDestructionWindowCellIDs).
+                    CM:HoverOnDestruction(Cell)
+                    local Window = Cells(CM.LastDestructionWindowCellIDs)
+                    if #Window > 0 and AllInside(Window) and PairInside(Built) then
+                        CM:DeleteWindowedCells(Cell)
+                        Report.BeltCells = Report.BeltCells + #Window
+                    else
+                        Report.BeltCellsKept = Report.BeltCellsKept + 1
+                    end
+                end
+            end
+        end
+    end)
+    pcall(function() CM:ClearDestructionHoverSelection() end)
+    pcall(function() CM:BP_RecoupCollected() end)
+    CM:SetConveyorMode(PrevMode)
+    CM:UpdateHoloSectionCosts()
+    if not Ok then Report.Errors[#Report.Errors + 1] = "belts: " .. tostring(Err) end
+    return Report
+end
+
+function Placer.DeleteSummary(R)
+    local S = string.format("Deleted %d modules (built ones are dismantled by robots), %d belt cells", R.Modules, R.BeltCells)
+    if R.ModulesKept > 0 then S = S .. string.format(" | %d modules kept (locked)", R.ModulesKept) end
+    if R.BeltCellsKept > 0 then S = S .. string.format(" | %d belt cells kept (belt crosses the selection)", R.BeltCellsKept) end
+    if #R.Errors > 0 then S = S .. " | " .. R.Errors[1] end
+    return S
+end
+
 function Placer.BuildSummary(R)
     local S = string.format("Construction started: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
     if R.NotBuilt > 0 then S = S .. string.format(" | %d modules kept planned (supply limit or locked)", R.NotBuilt) end

@@ -1,8 +1,8 @@
 # Blueprints Mod for The Crust
 
-Select an area of your base, copy/paste it or save it as a reusable blueprint. Pasting places
-**vanilla ghosts**: modules in planning mode (with their rotation, mirroring and production scheme),
-holo conveyor belts and the electric wires between pasted modules. Build them afterwards with the
+Select an area of your base, copy, move (cut) or delete it, or save it as a reusable blueprint.
+Pasting places **vanilla ghosts**: modules in planning mode (with their rotation, mirroring and
+production scheme), holo conveyor belts and the electric wires between pasted modules. Build them afterwards with the
 normal game buttons, or all at once from the panel.
 
 ![Blueprints panel, annotated](https://github.com/OmiCron07/TheCrust-Mods/raw/main/Docs/Images/blueprints-panel.png)
@@ -23,6 +23,19 @@ pastes are cancelled when you switch layer.
    clicking to place more copies.
 4. Right click to stop pasting. **Paste clipboard** ④ (`Alt+K`) pastes the same thing again later.
    **Copy** only puts the selection in the clipboard, without starting a paste.
+
+### Move or delete an area
+1. Select an area as above.
+2. **Cut** (right of **Build selection**) deletes the selection and starts pasting it: place it
+   elsewhere, then right click to stop. The cut elements stay in the clipboard (`Alt+K`).
+3. **Delete** (right of **Cut**) deletes the selection: click it, then **Confirm?** on the same
+   button.
+
+Both use the vanilla demolition tool: planned ghosts and holo belts vanish, built belts are removed
+and refunded like with the vanilla tool, built modules get the vanilla dismantle order (robots take
+them down, so their cells stay taken until then). Nothing outside the selection is removed: a belt
+crossing the selection edge is kept where removing it would also take cells outside (the status line
+counts them).
 
 ### Save and reuse a blueprint
 1. Select an area as above.
@@ -49,6 +62,8 @@ pastes are cancelled when you switch layer.
 | 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied selection or the last placed blueprint. |
 | 5 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
 | 6 | Build selection | `Shift+K` | Starts construction of the planned modules and holo belts inside the selection. |
+| | Cut | | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Build selection**). |
+| | Delete | | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?**. |
 | 7 | Selection info | | Modules, belt cells and wires captured by the current selection. |
 | 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
 | 9 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
@@ -110,6 +125,7 @@ settings support must be captured again to include them.
 ## Configuration (`Scripts/config.lua`)
 - `Keys`: hotkeys (avoid letters the game binds: B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z).
 - `PasteConveyors` / `PasteElectricLinks`: toggle belt and wire pasting.
+- `PasteAsConstruction`: default paste mode (`false` = Plan, `true` = Build).
 - `PanelPosition`: panel offset from the top-right corner.
 - `DebugLogging`: log per-module paste errors to the UE4SS log.
 

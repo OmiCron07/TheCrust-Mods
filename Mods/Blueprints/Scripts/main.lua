@@ -127,7 +127,7 @@ local function StartSelect(PC)
     Notify("Drag with the left mouse button over the area (right click cancels)")
 end
 
-local function StartPaste(PC, BP, Label)
+local function StartPaste(PC, BP, Label, Prefix)
     if not EnterLayer(PC) then return end
     ClearMode()
     State.Mode = "pasting"
@@ -136,7 +136,7 @@ local function StartPaste(PC, BP, Label)
     local Note = ""
     if BP.Layer ~= State.Layer then Note = " (made on " .. (LayerNames[BP.Layer] or "?") .. ")" end
     local As = State.PasteAsConstruction and "construction" or "planning ghosts"
-    Notify("Pasting " .. Label .. Note .. " as " .. As .. ": left click places, R / Shift+R rotates, T mirrors, right click stops")
+    Notify((Prefix or "") .. "Pasting " .. Label .. Note .. " as " .. As .. ": left click places, R / Shift+R rotates, T mirrors, right click stops")
 end
 
 local function SelectionBox()
@@ -180,6 +180,17 @@ local function HasSelection()
     return State.Captured ~= nil and not Capture.IsEmpty(State.Captured)
 end
 
+-- Deletes the elements of the selected area and clears the selection. Returns the summary.
+local function DeleteSelection(PC)
+    local S = State.Selection
+    local Report = Placer.DeleteArea(PC, State.Layer, S.R0, S.C0, S.R1, S.C1)
+    for _, E in ipairs(Report.Errors) do Log(E) end
+    ClearMode()
+    State.Captured = nil
+    UI.SetSelectionInfo("No selection")
+    return Placer.DeleteSummary(Report)
+end
+
 local function HandleAction(PC, Action, Index)
     Log("Action " .. Action .. " " .. tostring(Index))
     if Action == "SelectArea" then
@@ -189,6 +200,16 @@ local function HandleAction(PC, Action, Index)
             State.Clipboard = State.Captured
             Notify("Selection copied to the clipboard")
         else Notify("Select an area first") end
+    elseif Action == "Cut" then
+        if not (HasSelection() and State.Mode == "selected") then Notify("Select an area first") return end
+        -- Captured again so the clipboard holds exactly what gets deleted.
+        local S = State.Selection
+        local BP = Capture.FromRect(PC, State.Layer, S.R0, S.C0, S.R1, S.C1) or State.Captured
+        local Summary = DeleteSelection(PC)
+        StartPaste(PC, BP, "cut selection", Summary .. ". ")
+    elseif Action == "DeleteSelection" then
+        if not (State.Selection and State.Mode == "selected") then Notify("Select an area first") return end
+        Notify(DeleteSelection(PC))
     elseif Action == "CopySelection" then
         if HasSelection() then StartPaste(PC, State.Captured, "selection")
         else Notify("Select an area first") end
