@@ -15,8 +15,11 @@ Game.LayerCrater = 2
 local ExcludedStates = { [0] = true, [6] = true, [7] = true, [8] = true }
 
 -- UE4SS hands out null wrappers instead of nil: always check before touching an object.
+-- UE4SS IsValid stays true for destroyed (pending kill) objects until the next garbage collection
+-- (~60 s), and FindAllOf still returns them: e.g. salvaged modules kept blocking their cells.
 function Game.Valid(Obj)
     return type(Obj) == "userdata" and Obj:IsValid()
+        and not Obj:HasAnyInternalFlags(EInternalObjectFlags.PendingKill)
 end
 
 function Game.PC()
