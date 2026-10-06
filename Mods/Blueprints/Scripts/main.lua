@@ -66,11 +66,16 @@ local LayerNames = { [0] = "Underground", [1] = "Orbital", [2] = "Crater" }
 local KeyDescriptions = {
     { "TogglePanel", "Open / close this panel" },
     { "SelectArea", "Select an area (drag left mouse)" },
+    { "Copy", "Copy the selection" },
     { "CopySelection", "Copy the selection and paste it" },
+    { "Cut", "Cut the selection and paste it" },
+    { "DeleteSelection", "Delete the selection" },
     { "PasteClipboard", "Paste the clipboard again" },
     { "BuildSelection", "Build the ghosts of the selection" },
     { "TogglePasteMode", "Paste as plan / build" },
 }
+
+local KeyNames = { INS = "Insert", DEL = "Delete" }
 
 local function KeyLabel(Binding)
     if not Binding then return nil end
@@ -79,7 +84,7 @@ local function KeyLabel(Binding)
     for _, M in ipairs({ { "CONTROL", "Ctrl" }, { "SHIFT", "Shift" }, { "ALT", "Alt" } }) do
         if Has[M[1]] then Parts[#Parts + 1] = M[2] end
     end
-    Parts[#Parts + 1] = Binding.Key
+    Parts[#Parts + 1] = KeyNames[Binding.Key] or Binding.Key
     return table.concat(Parts, "+")
 end
 
@@ -462,7 +467,10 @@ Bind("TogglePanel", function()
     RefreshLibrary()
 end)
 Bind("SelectArea", StartSelect)
+Bind("Copy", function(PC) HandleAction(PC, "Copy") end)
 Bind("CopySelection", function(PC) HandleAction(PC, "CopySelection") end)
+Bind("Cut", function(PC) HandleAction(PC, "Cut") end)
+Bind("DeleteSelection", function(PC) HandleAction(PC, "DeleteSelection") end)
 Bind("PasteClipboard", function(PC) HandleAction(PC, "PasteClipboard") end)
 Bind("BuildSelection", function(PC) HandleAction(PC, "BuildSelection") end)
 Bind("TogglePasteMode", function(PC) HandleAction(PC, "TogglePasteMode") end)

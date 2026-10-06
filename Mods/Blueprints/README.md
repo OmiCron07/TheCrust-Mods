@@ -24,14 +24,14 @@ pastes are cancelled when you switch layer.
 3. Rotate with `R` / `Shift+R`, mirror with `T`, then left click to place the ghosts. You stay in
    paste mode: keep clicking to place more copies.
 4. Right click to stop pasting. **Paste clipboard** ④ (`Alt+K`) pastes the same thing again later.
-   **Copy** only puts the selection in the clipboard, without starting a paste.
+   **Copy** (`Ctrl+Insert`) only puts the selection in the clipboard, without starting a paste.
 
 ### Move or delete an area
 1. Select an area as above.
-2. **Cut** (right of **Build selection**) deletes the selection and starts pasting it: place it
-   elsewhere, then right click to stop. The cut elements stay in the clipboard (`Alt+K`).
-3. **Delete** (right of **Cut**) deletes the selection: click it, then **Confirm?** on the same
-   button.
+2. **Cut** (`Shift+Delete`, right of **Build selection**) deletes the selection and starts pasting
+   it: place it elsewhere, then right click to stop. The cut elements stay in the clipboard (`Alt+K`).
+3. **Delete** (`Delete`, right of **Cut**) deletes the selection. The button asks for a second click
+   (**Confirm?**); the `Delete` key deletes right away.
 
 Both use the vanilla demolition tool: planned ghosts and holo belts vanish, built belts are removed
 and refunded like with the vanilla tool, built modules get the vanilla dismantle order (robots take
@@ -59,13 +59,13 @@ counts them).
 |---|---------|--------|--------------|
 | 1 | Status line | | Result of the last action and what to do next (e.g. "Drag with the left mouse button over the area"). |
 | 2 | Select area | `Ctrl+K` | Starts an area selection: press and drag the left mouse button. Right click cancels or clears the selection. |
-| | Copy | | Copies the selection to the clipboard without pasting (button left of **Copy + paste**). |
+| | Copy | `Ctrl+Insert` | Copies the selection to the clipboard without pasting (button left of **Copy + paste**). |
 | 3 | Copy + paste | `Ctrl+Shift+K` | Copies the selection to the clipboard and starts pasting it. |
 | 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied or cut selection, or the last placed blueprint. |
 | 5 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
 | 6 | Build selection | `Shift+K` | Starts construction of the planned modules and holo belts inside the selection. |
-| | Cut | | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Build selection**). |
-| | Delete | | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?**. |
+| | Cut | `Shift+Delete` | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Build selection**). |
+| | Delete | `Delete` | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?** (the key deletes right away). |
 | 7 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
 | 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
 | 9 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
@@ -79,7 +79,10 @@ counts them).
 |-----|--------|
 | `K` | Open / close the blueprint manager panel |
 | `Ctrl+K` | Select an area, then drag with the left mouse button |
+| `Ctrl+Insert` | Copy the selection to the clipboard |
 | `Ctrl+Shift+K` | Copy the selection and start pasting it |
+| `Shift+Delete` | Cut: delete the selection and start pasting it |
+| `Delete` | Delete the selection (vanilla demolition, no confirmation) |
 | `Alt+K` | Paste the clipboard again |
 | `Shift+K` | Start construction of the planned modules and holo belts in the selection |
 | `Ctrl+Alt+K` | Switch pasting between planning ghosts and direct construction |
@@ -132,7 +135,8 @@ belts.
   them: a paste over the old place shows red outlines until then.
 
 ## Configuration (`Scripts/config.lua`)
-- `Keys`: hotkeys (avoid letters the game binds: B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z).
+- `Keys`: hotkeys (avoid keys the game binds, e.g. A/B/C/D/E/F/G/H/J/L/M/N/P/Q/R/S/T/U/V/W/X/Y/Z;
+  `Insert` and `Delete` are free and named `INS` / `DEL`).
 - `PasteConveyors` / `PasteElectricLinks`: toggle belt and wire pasting.
 - `PasteAsConstruction`: default paste mode (`false` = Plan, `true` = Build).
 - `PanelPosition`: panel offset from the top-right corner.

@@ -71,7 +71,10 @@ between pasted modules. Build them afterwards with the normal game buttons, or a
 |-----|--------|
 | `K` | Open / close the blueprint manager panel (library: save, place, rename, delete) |
 | `Ctrl+K` | Select an area (drag with the left mouse button) |
+| `Ctrl+Insert` | Copy the selection to the clipboard |
 | `Ctrl+Shift+K` | Copy the selection and start pasting it |
+| `Shift+Delete` | Cut: delete the selection and start pasting it |
+| `Delete` | Delete the selection |
 | `Alt+K` | Paste the clipboard again |
 | `Shift+K` | Start construction of the planned modules and holo belts in the selection |
 | `Ctrl+Alt+K` | Switch pasting between planning ghosts and direct construction |

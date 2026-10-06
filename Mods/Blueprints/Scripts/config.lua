@@ -2,7 +2,8 @@
 -- Key names come from UE4SS `Key` (e.g. "K", "B", "F7") and modifiers from `ModifierKey` ("CONTROL", "SHIFT", "ALT").
 -- Vanilla bindings without modifiers also fire when Ctrl/Shift/Alt are held (Ctrl+B also enters belt
 -- mode), so only use keys the game does not bind at all. Letters bound by the game:
--- B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z. Each binding fires only with exactly its modifiers.
+-- A/B/C/D/E/F/G/H/J/L/M/N/P/Q/R/S/T/U/V/W/X/Y/Z (Insert and Delete are free). Each binding fires
+-- only with exactly its modifiers.
 local Config = {
     Keys = {
         -- Open / close the blueprint manager panel.
@@ -11,7 +12,14 @@ local Config = {
         SelectArea = { Key = "K", Modifiers = { "CONTROL" } },
         -- Copy the current selection to the clipboard and start pasting it.
         CopySelection = { Key = "K", Modifiers = { "CONTROL", "SHIFT" } },
-        -- Paste the clipboard (last copied selection or last placed blueprint).
+        -- Copy the selection to the clipboard without pasting. Windows Ctrl+Insert: Ctrl+C would also
+        -- trigger the vanilla C tool (game letters fire with any modifier).
+        Copy = { Key = "INS", Modifiers = { "CONTROL" } },
+        -- Delete the selection and start pasting it (Windows Shift+Delete).
+        Cut = { Key = "DEL", Modifiers = { "SHIFT" } },
+        -- Delete the selection with the vanilla demolition tool (no confirmation, unlike the button).
+        DeleteSelection = { Key = "DEL", Modifiers = {} },
+        -- Paste the clipboard (last copied or cut selection, or last placed blueprint).
         PasteClipboard = { Key = "K", Modifiers = { "ALT" } },
         -- Start construction of the planned modules and holo belts of the current selection
         -- (same as the vanilla play button on each planned module).

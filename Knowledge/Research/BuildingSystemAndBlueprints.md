@@ -51,7 +51,7 @@ Place modules, conveyor belts and electric wires programmatically as vanilla gho
 - UObject references (widgets, actors) must be dropped without being touched when the world changes (save load): key the session on `PC:GetFullName()` and idle while `CrustGameInstance_C.LoadingInProcess`.
 - UE4SS out params: pass one table per out param; the first one receives all values by parameter name. A lone struct out param (e.g. `GetGridLocationByCellID`) is unpacked into the table (`X, Y, Z`). By-ref struct inputs (`"Add Link"(FLinkStruct&)`) need a Lua table copy, so write the returned `Added Link Id` back into `EM.CurrentLink` before `AddLinkToItsNodes`, or nodes get link id -1.
 - `GetGridLocationByCellID` returns nothing for cells outside the level (e.g. cell 0).
-- Vanilla input action mappings without modifiers also fire when Ctrl/Shift/Alt are held: `Ctrl+B` triggers belt mode. Use keys the game does not bind (K, I, O) for mod hotkeys.
+- Vanilla input action mappings without modifiers also fire when Ctrl/Shift/Alt are held: `Ctrl+B` triggers belt mode. Use keys the game does not bind (K, I, O, Insert, Delete; `DefaultInput.ini` also binds A/D/S/W) for mod hotkeys; UE4SS names Insert / Delete `Key.INS` / `Key.DEL`.
 - `"Debug Execute Cancel Ability"` on a module crashed the game; remove ghosts with vanilla UI tools instead.
 - Engine overlay materials (`M_SimpleUnlitTranslucent`, `BasicShapeMaterial`) ignore alpha set through a MID `Color` param: draw outlines, not filled boxes.
 
