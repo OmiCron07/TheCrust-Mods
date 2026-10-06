@@ -72,6 +72,7 @@ pastes are cancelled when you switch layer.
 | Right click | Cancel / clear the selection, stop pasting |
 
 ### Paste preview
+- Every module is shown as its vanilla blue hologram, like in the building mode.
 - Cyan outline: the module can be placed there; red outline: it cannot (overlap, undug ground,
   or the module's own rule).
 - Extractors: their active cells are shown as small squares, green on an ore vein, red elsewhere;
