@@ -450,8 +450,11 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
         return true
     end
     -- Both ends of an underground pair go together (a capture skips pairs cut by the selection).
+    -- Deleting one end unlinks the other (ConnectedUndergroundBeltCellID -1): a lone end goes too.
     local function PairInside(S)
-        return S:GetSectionType() ~= 3 or Inside(S.State.ConnectedUndergroundBeltCellID)
+        if S:GetSectionType() ~= 3 then return true end
+        local Other = S.State.ConnectedUndergroundBeltCellID
+        return Other < 0 or Inside(Other)
     end
 
     local PrevMode = CM:GetConveyorMode()
