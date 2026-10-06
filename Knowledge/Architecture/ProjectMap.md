@@ -21,6 +21,9 @@ Provide navigational map of TheCrust modding directories and component boundarie
   - `Scripts/Setup-UE4SS.ps1`: Installs or uninstalls UE4SS in game Win64 directory.
   - `Scripts/Deploy-Lua-Mod.ps1`: Deploys Lua scripts to UE4SS mods directory.
   - `Scripts/Extract-Game-Pak.ps1`: Unpacks game `.pak` files for inspection.
+  - `Scripts/Invoke-DevBridge.ps1`: Runs Lua in the live game through the DevBridge mod.
+  - `Scripts/Get-GameScreenshot.ps1`: GPU-safe game window capture into `Captures/` (gitignored).
+  - `Scripts/Invoke-WinDrive.ps1`: Guarded mouse/keyboard batches to the game window (see `Playbooks/LiveVerification.md`).
 - `Mods/`: Staging directory for developing custom mods (Pak mods, Lua scripts).
 - `Knowledge/`: Self-improving OKF knowledge base.
 - `AGENTS.md`: Root micro-router for agent orientation.

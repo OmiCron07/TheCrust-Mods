@@ -24,6 +24,7 @@ obj/
 Extracted/
 Tools/
 Mods/**/Build/
+Captures/
 
 # Antigravity Transient Caches
 .gemini/antigravity/brain/
