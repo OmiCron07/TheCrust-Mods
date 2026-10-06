@@ -2,12 +2,14 @@
 
 Select an area of your base, copy, move (cut) or delete it, or save it as a reusable blueprint.
 Pasting places **vanilla ghosts**: modules in planning mode (with their rotation, mirroring and
-production scheme), holo conveyor belts and the electric wires between pasted modules. Build them afterwards with the
-normal game buttons, or all at once from the panel.
+production scheme), holo conveyor belts, distributors, underground belts and the electric wires
+between pasted modules. Build them afterwards with the normal game buttons, or all at once from the
+panel.
 
 ![Blueprints panel, annotated](https://github.com/OmiCron07/TheCrust-Mods/raw/main/Docs/Images/blueprints-panel.png)
 
-Press `K` in game to open the panel. Every button also has a hotkey, so the panel can stay closed.
+Press `K` in game to open the panel. The main actions also have hotkeys (see [Controls](#controls)),
+so the panel can stay closed.
 
 ## Quick start
 Blueprints work on the **Underground** and **Crater** layers (not on the orbital view). Selections and
@@ -19,8 +21,8 @@ pastes are cancelled when you switch layer.
    them.
 2. Click **Copy + paste** ③ (`Ctrl+Shift+K`). A preview follows the cursor (see
    [Paste preview](#paste-preview)).
-3. Rotate with `R` / `Shift+R`, mirror with `T`, then left click to place the ghosts. You stay in paste mode: keep
-   clicking to place more copies.
+3. Rotate with `R` / `Shift+R`, mirror with `T`, then left click to place the ghosts. You stay in
+   paste mode: keep clicking to place more copies.
 4. Right click to stop pasting. **Paste clipboard** ④ (`Alt+K`) pastes the same thing again later.
    **Copy** only puts the selection in the clipboard, without starting a paste.
 
@@ -59,12 +61,12 @@ counts them).
 | 2 | Select area | `Ctrl+K` | Starts an area selection: press and drag the left mouse button. Right click cancels or clears the selection. |
 | | Copy | | Copies the selection to the clipboard without pasting (button left of **Copy + paste**). |
 | 3 | Copy + paste | `Ctrl+Shift+K` | Copies the selection to the clipboard and starts pasting it. |
-| 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied selection or the last placed blueprint. |
+| 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied or cut selection, or the last placed blueprint. |
 | 5 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
 | 6 | Build selection | `Shift+K` | Starts construction of the planned modules and holo belts inside the selection. |
 | | Cut | | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Build selection**). |
 | | Delete | | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?**. |
-| 7 | Selection info | | Modules, belt cells and wires captured by the current selection. |
+| 7 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
 | 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
 | 9 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
 | 10 | Rename | | Renames that blueprint with the text of the name box. |
@@ -119,8 +121,15 @@ Mirroring flips the whole blueprint like vanilla `T` flips a module: each module
 Modules the game never mirrors (storages) keep their shape; their IO settings follow the mirrored
 belts.
 
-Not supported yet: storage limits, belt tiers. Blueprints saved before distributor and
-settings support must be captured again to include them.
+## Limitations
+- Not copied: storage limits, belt tiers (belts are pasted at the base tier), gas pipes, roads,
+  wires to modules outside the selection, and modules the vanilla copy rule refuses (not built by
+  the player, or still locked).
+- Underground belt pairs cut by the selection are not copied (the selection info counts them).
+- Blueprints saved before distributor, IO settings or underground belt support do not contain them:
+  capture the area again to include them.
+- After a **Cut** of built modules, their cells stay taken until the robots finish dismantling
+  them: a paste over the old place shows red outlines until then.
 
 ## Configuration (`Scripts/config.lua`)
 - `Keys`: hotkeys (avoid letters the game binds: B/C/E/F/G/H/J/L/M/N/P/Q/R/T/U/V/X/Y/Z).

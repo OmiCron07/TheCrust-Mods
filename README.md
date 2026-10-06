@@ -9,7 +9,7 @@ used to build them.
 
 | Mod | What it does | Download |
 |-----|--------------|----------|
-| [Blueprints](#blueprints) | Copy / paste areas of your base and save them as reusable blueprints | [TheCrust-Blueprints.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-Blueprints.zip) |
+| [Blueprints](#blueprints) | Copy, move or delete areas of your base and save them as reusable blueprints | [TheCrust-Blueprints.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-Blueprints.zip) |
 | [ZoomToCursor](#zoomtocursor) | Mouse wheel zooms toward the cursor instead of the screen center | [TheCrust-ZoomToCursor.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-ZoomToCursor.zip) |
 | [SkipIntro](#skipintro) | Skips the startup logo videos (story cinematics kept), no UE4SS needed | [TheCrust-SkipIntro.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-SkipIntro.zip) |
 | All mods | All the mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
@@ -59,10 +59,11 @@ of game files` restores the original videos.
 ## Mods
 
 ### Blueprints
-Select an area, copy/paste it or save it as a reusable blueprint. Pasting places vanilla planning
-ghosts: modules with their rotation, mirroring and production scheme, holo conveyor belts and the
-electric wires between pasted modules. Build them afterwards with the normal game buttons, or all at
-once with **Build selection**.
+Select an area, copy, move (cut) or delete it, or save it as a reusable blueprint. Pasting places
+vanilla planning ghosts: modules with their rotation, mirroring, production scheme and IO settings,
+holo conveyor belts, distributors with their settings, underground belts and the electric wires
+between pasted modules. Build them afterwards with the normal game buttons, or all at once with
+**Build selection**. Full guide: [Mods/Blueprints/README.md](Mods/Blueprints/README.md).
 
 ![Blueprints panel, annotated](Docs/Images/blueprints-panel.png)
 
