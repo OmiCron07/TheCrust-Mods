@@ -401,9 +401,9 @@ end
 
 -- Removes the modules and belts of a cell rectangle (inclusive) through the vanilla demolition tool
 -- paths (GodPlayer_PC "LMB for Demolition"): ToggleModuleDismantle on modules (planned ghosts vanish,
--- built modules get the dismantle order), HoverOnDestruction + DeleteWindowedCells + BP_RecoupCollected
--- on built belts (refunded), DeleteHoloSectionAtCellID on holo belts. Only the modules a capture of the
--- rectangle copies are touched, and belt cells whose deletion would reach outside the rectangle are kept.
+-- built modules get the dismantle order), DeleteWindowedCells + BP_RecoupCollected on built belts
+-- (refunded), HoverOnDestruction + DeleteHoloSectionAtCellID on holo belts. Only the modules a capture
+-- of the rectangle copies are touched, and nothing outside the rectangle is removed.
 function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
     local Report = { Modules = 0, ModulesKept = 0, BeltCells = 0, BeltCellsKept = 0, Errors = {} }
     local CM = Game.ConveyorManager(PC, Layer)
@@ -421,15 +421,19 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
         local Agency = M.BuildingAgency
         if Row >= R0 and Row <= R1 and Col >= C0 and Col <= C1 and Game.IsCopyAllowed(M) and not M.IsFromPackage
             and not (Game.Valid(Agency) and Agency.MarkedOnDismantle) then
-            local Ok, Err = pcall(function()
-                if M:ActorHasTag(FName("LockedDemolition")) then return end
+            -- The result shows up later in the frame (planned and under construction modules are
+            -- destroyed after the call returns), so orders are counted, not results.
+            local Ok, Locked = pcall(function()
+                if M:ActorHasTag(FName("LockedDemolition")) then return true end
                 PC:ToggleModuleDismantle(M)
+                return false
             end)
-            if not Ok then Report.Errors[#Report.Errors + 1] = "dismantle: " .. tostring(Err) end
-            if not Game.Valid(M) or (Game.Valid(Agency) and Agency.MarkedOnDismantle) or M.BuildingStateCPP >= 6 then
-                Report.Modules = Report.Modules + 1
-            else
+            if not Ok then
+                Report.Errors[#Report.Errors + 1] = "dismantle: " .. tostring(Locked)
+            elseif Locked then
                 Report.ModulesKept = Report.ModulesKept + 1
+            else
+                Report.Modules = Report.Modules + 1
             end
         end
     end
@@ -453,26 +457,51 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
     local PrevMode = CM:GetConveyorMode()
     CM:SetConveyorMode(2) -- Vanilla demolition mode (GodPlayer_PC StartDeconstruct).
     local Ok, Err = pcall(function()
+        -- Built belts: DeleteWindowedCells removes exactly the cells of LastDestructionWindowCellIDs
+        -- (the vanilla hover fills it with a 4-5 cell chunk), so each section loses only its cells
+        -- inside the rectangle.
+        local BuiltCells, Order = {}, {}
+        for R = R0, R1 do
+            for C = C0, C1 do
+                local Cell = Grid.ToCell(R, C)
+                local Built = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
+                if Game.Valid(Built) then
+                    if PairInside(Built) then
+                        local Key = Built:GetAddress()
+                        if not BuiltCells[Key] then
+                            BuiltCells[Key] = {}
+                            Order[#Order + 1] = Key
+                        end
+                        table.insert(BuiltCells[Key], Cell)
+                    else
+                        Report.BeltCellsKept = Report.BeltCellsKept + 1
+                    end
+                end
+            end
+        end
+        for _, Key in ipairs(Order) do
+            local List = BuiltCells[Key]
+            -- Gone already when it was the other end of a deleted underground pair.
+            if Game.Valid(CM.SectionGrid:GetSectionAtCellID_Safe(List[1])) then
+                local Window = CM.LastDestructionWindowCellIDs
+                Window:Empty()
+                for i, Cell in ipairs(List) do Window[i] = Cell end
+                CM:DeleteWindowedCells(List[1])
+                Report.BeltCells = Report.BeltCells + #List
+            end
+        end
+        -- Holo belts: DeleteHoloSectionAtCellID always removes the vanilla chunk (custom windows are
+        -- ignored), so a chunk crossing the rectangle edge is kept.
         for R = R0, R1 do
             for C = C0, C1 do
                 local Cell = Grid.ToCell(R, C)
                 local Holo = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell)
-                local Built = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
                 if Game.Valid(Holo) then
-                    local List = Cells(Holo.State.CellIds)
-                    if AllInside(List) and PairInside(Holo) then
-                        CM:DeleteHoloSectionAtCellID(Cell)
-                        Report.BeltCells = Report.BeltCells + #List
-                    else
-                        Report.BeltCellsKept = Report.BeltCellsKept + 1
-                    end
-                elseif Game.Valid(Built) then
-                    -- The demolition hover picks the cells a click deletes (LastDestructionWindowCellIDs).
                     CM:HoverOnDestruction(Cell)
-                    local Window = Cells(CM.LastDestructionWindowCellIDs)
-                    if #Window > 0 and AllInside(Window) and PairInside(Built) then
-                        CM:DeleteWindowedCells(Cell)
-                        Report.BeltCells = Report.BeltCells + #Window
+                    local Chunk = Cells(CM.LastDestructionWindowCellIDs)
+                    if #Chunk > 0 and AllInside(Chunk) and PairInside(Holo) then
+                        CM:DeleteHoloSectionAtCellID(Cell)
+                        Report.BeltCells = Report.BeltCells + #Chunk
                     else
                         Report.BeltCellsKept = Report.BeltCellsKept + 1
                     end
@@ -491,7 +520,7 @@ end
 function Placer.DeleteSummary(R)
     local S = string.format("Deleted %d modules (built ones are dismantled by robots), %d belt cells", R.Modules, R.BeltCells)
     if R.ModulesKept > 0 then S = S .. string.format(" | %d modules kept (locked)", R.ModulesKept) end
-    if R.BeltCellsKept > 0 then S = S .. string.format(" | %d belt cells kept (belt crosses the selection)", R.BeltCellsKept) end
+    if R.BeltCellsKept > 0 then S = S .. string.format(" | %d belt cells kept (holo or underground belt crossing the selection edge)", R.BeltCellsKept) end
     if #R.Errors > 0 then S = S .. " | " .. R.Errors[1] end
     return S
 end
