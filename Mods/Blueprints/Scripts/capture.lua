@@ -5,11 +5,13 @@
 --   Modules  : { Class, DR, DC (actor location, may be x.5), Turns (yaw / 90), Mirrored,
 --                Recipe (APS ability name, "" if none), Cells = {{dr, dc}, ...} }
 --   Belts    : array of paths, each path = array of {dr, dc, dir} in flow order (dir = ECDirection);
---              a path starts on the cell feeding it and ends on the distributor it feeds, if any
+--              a path starts on the cell feeding it and ends on the distributor or underground
+--              entry it feeds, if any
+--   Undergrounds : { {dr, dc} entry, {dr, dc} exit, Dir } underground belt pairs (Dir = flow)
 --   Links    : { A, B } indices into Modules joined by an electric wire
 --   Distributors : { DR, DC, Outputs, Inputs } settings of each distributor (see settings.lua);
 --              modules also carry IO = IO cell settings
---   Skipped  : count of unsupported conveyor parts (underground belts)
+--   Skipped  : count of conveyor parts not copied (underground pairs cut by the selection)
 
 local Grid = require("grid")
 local Game = require("game")
@@ -19,6 +21,7 @@ local Capture = {}
 
 local BeltLine = 1
 local Distributor = 2
+local Underground = 3
 
 local function ArrayToTable(Arr)
     local T = {}
@@ -61,19 +64,20 @@ local function CaptureModules(Rect, OR, OC, Geo, Layer)
     return Modules, ById
 end
 
--- Separate BuildHolo calls only connect when one starts or ends on a cell of an existing belt, and
+-- Separate BuildHolo calls only connect when one starts or ends on a cell of an existing section, and
 -- distributors are created that way too (a belt starting or ending on another belt's middle cell),
--- so they are not stored: a path fed by a captured belt or distributor starts on that cell, and a
--- path feeding a distributor ends on its cell.
+-- so they are not stored: a path fed by a captured section starts on that cell, and a path feeding a
+-- distributor or underground entry ends on its cell. Underground pairs are placed before the belts.
 local function CaptureBelts(CM, Rect, OR, OC)
-    local Belts, Skipped, Distributors = {}, 0, {}
+    local Belts, Skipped, Distributors, Undergrounds = {}, 0, {}, {}
     CM:UpdateSectionStates()
 
-    local Kinds = {}
+    local Kinds, UndergroundStates = {}, {}
     local function FindCells(States)
         States:ForEach(function(_, E)
             local S = E:get()
-            if S.Type == BeltLine or S.Type == Distributor then
+            if S.Type == Underground then UndergroundStates[S.CellIds[1]] = S end
+            if S.Type == BeltLine or S.Type == Distributor or S.Type == Underground then
                 for _, Cell in ipairs(ArrayToTable(S.CellIds)) do
                     if Rect.Contains(Grid.ToRowCol(Cell)) then
                         Kinds[Cell] = S.Type
@@ -95,13 +99,14 @@ local function CaptureBelts(CM, Rect, OR, OC)
     FindCells(CM.BuiltSectionStates)
     FindCells(CM.HoloSectionStates)
 
-    local function CellAmong(Arr, Kind)
+    local function CellAmong(Arr, NotBelt)
         for _, Cell in ipairs(ArrayToTable(Arr)) do
-            if Kinds[Cell] and (Kind == nil or Kinds[Cell] == Kind) then return Cell end
+            if Kinds[Cell] and not (NotBelt and Kinds[Cell] == BeltLine) then return Cell end
         end
     end
 
-    -- Distributor feeding an adjacent distributor: two-cell path, drawn once both exist.
+    -- Distributor / underground end feeding an adjacent distributor / underground entry: two-cell
+    -- path, drawn once both exist.
     local Bridges = {}
 
     local function Visit(States)
@@ -113,10 +118,32 @@ local function CaptureBelts(CM, Rect, OR, OC)
                 if Rect.Contains(Grid.ToRowCol(Cell)) then Inside = true break end
             end
             if not Inside then return end
-            if S.Type == Distributor then
+            if S.Type == Underground then
+                -- Both ends of a pair look the same (each line direction points at the other end);
+                -- the flow is given by the connections: the entry has inputs, the exit outputs.
+                -- An unconnected pair is kept as found from its lower cell.
+                local Cell, Other = Cells[1], S.ConnectedUndergroundBeltCellID
+                local IsEntry = S.InputToSectionCells:GetArrayNum() > 0
+                local IsExit = S.OutputFromSectionCells:GetArrayNum() > 0
+                local OtherState = UndergroundStates[Other]
+                local OtherEntry = OtherState and OtherState.InputToSectionCells:GetArrayNum() > 0
+                local OtherExit = OtherState and OtherState.OutputFromSectionCells:GetArrayNum() > 0
+                local Entry = IsEntry or OtherExit or (not (IsExit or OtherEntry) and Cell < Other)
+                if Other >= 0 and Entry then
+                    local R, C = Grid.ToRowCol(Cell)
+                    local R2, C2 = Grid.ToRowCol(Other)
+                    if Rect.Contains(R, C) and Rect.Contains(R2, C2) then
+                        local Dir = (R2 == R) and (C2 > C and 1 or 3) or (R2 > R and 2 or 0)
+                        Undergrounds[#Undergrounds + 1] = { { R - OR, C - OC }, { R2 - OR, C2 - OC }, Dir }
+                    else
+                        Skipped = Skipped + 1
+                    end
+                end
+            end
+            if S.Type == Distributor or S.Type == Underground then
                 local R, C = Grid.ToRowCol(Cells[1])
                 for _, To in ipairs(ArrayToTable(S.OutputFromSectionCells)) do
-                    if Kinds[To] == Distributor then
+                    if Kinds[To] == Distributor or Kinds[To] == Underground then
                         local R2, C2 = Grid.ToRowCol(To)
                         local Dir = Grid.DirectionBetween(R, C, R2, C2)
                         Bridges[#Bridges + 1] = { { R - OR, C - OC, Dir }, { R2 - OR, C2 - OC, Dir } }
@@ -152,7 +179,7 @@ local function CaptureBelts(CM, Rect, OR, OC)
             end
             if #Path > 0 then
                 -- Path still open: it reaches the section's last cell.
-                local To = CellAmong(S.OutputFromSectionCells, Distributor)
+                local To = CellAmong(S.OutputFromSectionCells, true)
                 if To then
                     local R, C = Grid.ToRowCol(To)
                     local Last = Path[#Path]
@@ -166,7 +193,7 @@ local function CaptureBelts(CM, Rect, OR, OC)
     Visit(CM.BuiltSectionStates)
     Visit(CM.HoloSectionStates)
     for _, Path in ipairs(Bridges) do Belts[#Belts + 1] = Path end
-    return Belts, Skipped, Distributors
+    return Belts, Skipped, Distributors, Undergrounds
 end
 
 local LinkStart = "StartNode_7_A30BB1064830FC46F18094A082539283"
@@ -215,7 +242,7 @@ function Capture.FromRect(PC, Layer, R0, C0, R1, C1)
 
     local Geo = Game.Geometry(CM)
     local Modules, ById = CaptureModules(Rect, OR, OC, Geo, Layer)
-    local Belts, Skipped, Distributors = CaptureBelts(CM, Rect, OR, OC)
+    local Belts, Skipped, Distributors, Undergrounds = CaptureBelts(CM, Rect, OR, OC)
     local Links = CaptureLinks(PC, ById)
 
     return {
@@ -224,6 +251,7 @@ function Capture.FromRect(PC, Layer, R0, C0, R1, C1)
         Belts = Belts,
         Links = Links,
         Distributors = Distributors,
+        Undergrounds = Undergrounds,
         Skipped = Skipped,
     }
 end
@@ -231,10 +259,10 @@ end
 function Capture.Summary(BP)
     local Cells = 0
     for _, P in ipairs(BP.Belts) do Cells = Cells + #P end
-    local S = string.format("%d modules, %d belt cells, %d distributors, %d wires", #BP.Modules, Cells,
-        #(BP.Distributors or {}), #BP.Links)
+    local S = string.format("%d modules, %d belt cells, %d distributors, %d undergrounds, %d wires",
+        #BP.Modules, Cells, #(BP.Distributors or {}), #(BP.Undergrounds or {}), #BP.Links)
     if (BP.Skipped or 0) > 0 then
-        S = S .. string.format(" (%d underground belt parts not supported)", BP.Skipped)
+        S = S .. string.format(" (%d underground belts cut by the selection, not copied)", BP.Skipped)
     end
     return S
 end

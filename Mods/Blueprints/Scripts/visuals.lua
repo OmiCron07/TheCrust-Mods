@@ -174,6 +174,13 @@ function Visuals.BlueprintBoxes(BP, OR, OC, Turns, ModuleColor, BeltColor, Valid
             end
         end
     end
+    for _, U in ipairs(BP.Undergrounds or {}) do
+        for k = 1, 2 do
+            local DR, DC = Grid.Rotate(U[k][1], U[k][2], Turns)
+            local R, C = OR + DR, OC + DC
+            Boxes[#Boxes + 1] = { R, C, R, C, Color = BeltColor, Height = 18, Inset = 0.15, Outline = 0.12 }
+        end
+    end
     return Boxes
 end
 

@@ -190,8 +190,61 @@ function Placer.Occupancy(CM, Layer)
     return { Belts = Used, Modules = Modules }
 end
 
+-- Underground belt pair through the vanilla tool (ECInputMode 3): set the direction, click the entry,
+-- click the exit. BuildHolo never creates underground belts. Restores the tool state afterwards.
+local function PlaceUnderground(CM, Geo, Entry, Exit, Dir)
+    local Ctl = CM.Controller
+    local PrevMode, PrevDir = CM:GetConveyorMode(), Ctl:GetUndergroundBeltDirection()
+    local function Click(Cell)
+        local X, Y = Game.RowColToWorld(Geo, Grid.ToRowCol(Cell))
+        CM:MainPointerAction({ X = X, Y = Y, Z = Geo.Z })
+    end
+    local function Rotate(To)
+        for _ = 1, 4 do
+            if Ctl:GetUndergroundBeltDirection() == To then return end
+            CM:RotateUndergroundBelt(false)
+        end
+    end
+    CM:SetConveyorMode(3)
+    Ctl:ResetClickCellIDs()
+    Rotate(Dir)
+    local Ok, Err = pcall(function()
+        Click(Entry)
+        Click(Exit)
+    end)
+    Ctl:ResetClickCellIDs()
+    Rotate(PrevDir)
+    CM:SetConveyorMode(PrevMode)
+    if not Ok then error(Err) end
+    local S = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Entry)
+    return Game.Valid(S) and S:GetSectionType() == 3 and S.State.ConnectedUndergroundBeltCellID == Exit
+end
+
 local function PlaceBelts(CM, Layer, BP, OR, OC, Turns, Report)
     local Used = Placer.Occupancy(CM, Layer).Belts
+
+    -- Underground pairs first: the belts feeding / leaving them start or end on their cells.
+    local Geo = Game.Geometry(CM)
+    for _, U in ipairs(BP.Undergrounds or {}) do
+        local Ends = {}
+        for k = 1, 2 do
+            local DR, DC = Grid.Rotate(U[k][1], U[k][2], Turns)
+            local R, C = OR + DR, OC + DC
+            Ends[k] = Grid.InBounds(R, C) and not Used[Grid.ToCell(R, C)] and Grid.ToCell(R, C)
+        end
+        local Ok, Done = false, false
+        if Ends[1] and Ends[2] then
+            Ok, Done = pcall(PlaceUnderground, CM, Geo, Ends[1], Ends[2], Grid.RotateDir(U[3], Turns))
+        end
+        if Ok and Done then
+            Report.Undergrounds = Report.Undergrounds + 1
+            Report.BeltCells[#Report.BeltCells + 1] = Ends[1]
+            Report.BeltCells[#Report.BeltCells + 1] = Ends[2]
+        else
+            Report.UndergroundsFailed = Report.UndergroundsFailed + 1
+            if not Ok and Done then Report.Errors[#Report.Errors + 1] = "underground: " .. tostring(Done) end
+        end
+    end
     for _, Path in ipairs(BP.Belts) do
         -- Transform to absolute cells; blocked cells split the path.
         local Abs = {}
@@ -317,6 +370,7 @@ local function NewReport()
         Modules = 0, ModulesFailed = 0, Links = 0, BeltPieces = 0, BeltCellsBlocked = 0, Errors = {},
         BeltCells = {}, Built = 0, NotBuilt = 0, SectionsBuilt = 0, SectionsNoFunds = 0,
         Distributors = 0, DistributorsMissing = 0, SettingsMismatches = 0,
+        Undergrounds = 0, UndergroundsFailed = 0,
     }
 end
 
@@ -388,8 +442,13 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
         end
     end
 
-    if Options.PasteConveyors and #BP.Belts > 0 then
+    if Options.PasteConveyors and (#BP.Belts > 0 or #(BP.Undergrounds or {}) > 0) then
+        -- New holo sections are deferred (vanilla planning ghosts) only while the PC planning mode
+        -- is on (BP_ConveyorManager GetDeferModeActive); construction undefers ours later.
+        local PrevPlanning = PC.bIsPlanningModeActive
+        PC.bIsPlanningModeActive = true
         local Ok, Err = pcall(PlaceBelts, CM, Layer, BP, OR, OC, Turns, Report)
+        PC.bIsPlanningModeActive = PrevPlanning
         if not Ok then Report.Errors[#Report.Errors + 1] = "belts: " .. tostring(Err) end
     end
 
@@ -419,8 +478,8 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
 end
 
 function Placer.Summary(R)
-    local S = string.format("Placed %d ghost modules, %d belt pieces, %d distributors, %d wires", R.Modules,
-        R.BeltPieces, R.Distributors, R.Links)
+    local S = string.format("Placed %d ghost modules, %d belt pieces, %d distributors, %d undergrounds, %d wires",
+        R.Modules, R.BeltPieces, R.Distributors, R.Undergrounds, R.Links)
     if R.Built > 0 or R.SectionsBuilt > 0 then
         S = S .. string.format(" | construction: %d modules, %d belt sections", R.Built, R.SectionsBuilt)
     end
@@ -428,6 +487,7 @@ function Placer.Summary(R)
     if R.SectionsNoFunds > 0 then S = S .. string.format(" | %d belt sections not built (not enough credits)", R.SectionsNoFunds) end
     if R.ModulesFailed > 0 then S = S .. string.format(" | %d modules blocked (%s)", R.ModulesFailed, R.Errors[1] or "?") end
     if R.BeltCellsBlocked > 0 then S = S .. string.format(" | %d belt cells blocked", R.BeltCellsBlocked) end
+    if R.UndergroundsFailed > 0 then S = S .. string.format(" | %d undergrounds blocked", R.UndergroundsFailed) end
     if R.DistributorsMissing > 0 then S = S .. string.format(" | %d distributors not recreated", R.DistributorsMissing) end
     if R.SettingsMismatches > 0 then S = S .. string.format(" | %d settings not applied", R.SettingsMismatches) end
     return S
