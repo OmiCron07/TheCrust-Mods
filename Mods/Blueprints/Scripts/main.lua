@@ -185,7 +185,7 @@ local function HasSelection()
     return State.Captured ~= nil and not Capture.IsEmpty(State.Captured)
 end
 
--- Deletes the elements of the selected area and clears the selection. Returns the summary.
+-- Deletes the elements of the selected area and clears the selection. Returns the report.
 local function DeleteSelection(PC)
     local S = State.Selection
     local Report = Placer.DeleteArea(PC, State.Layer, S.R0, S.C0, S.R1, S.C1)
@@ -193,7 +193,7 @@ local function DeleteSelection(PC)
     ClearMode()
     State.Captured = nil
     UI.SetSelectionInfo("No selection")
-    return Placer.DeleteSummary(Report)
+    return Report
 end
 
 local function HandleAction(PC, Action, Index)
@@ -210,11 +210,14 @@ local function HandleAction(PC, Action, Index)
         -- Captured again so the clipboard holds exactly what gets deleted.
         local S = State.Selection
         local BP = Capture.FromRect(PC, State.Layer, S.R0, S.C0, S.R1, S.C1) or State.Captured
-        local Summary = DeleteSelection(PC)
-        StartPaste(PC, BP, "cut selection", Summary .. ". ")
+        -- Short status: the paste instructions follow and the panel grows with the status line.
+        local R = DeleteSelection(PC)
+        local Prefix = string.format("Cut %d modules, %d belt cells", R.Modules, R.BeltCells)
+        if R.BeltCellsKept > 0 then Prefix = Prefix .. string.format(" (%d kept)", R.BeltCellsKept) end
+        StartPaste(PC, BP, "cut selection", Prefix .. ". ")
     elseif Action == "DeleteSelection" then
         if not (State.Selection and State.Mode == "selected") then Notify("Select an area first") return end
-        Notify(DeleteSelection(PC))
+        Notify(Placer.DeleteSummary(DeleteSelection(PC)))
     elseif Action == "CopySelection" then
         if HasSelection() then StartPaste(PC, State.Captured, "selection")
         else Notify("Select an area first") end

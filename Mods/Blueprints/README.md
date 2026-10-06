@@ -35,9 +35,10 @@ pastes are cancelled when you switch layer.
 
 Both use the vanilla demolition tool: planned ghosts and holo belts vanish, built belts are removed
 and refunded like with the vanilla tool, built modules get the vanilla dismantle order (robots take
-them down, so their cells stay taken until then). Nothing outside the selection is removed: a belt
-crossing the selection edge is kept where removing it would also take cells outside (the status line
-counts them).
+them down, so their cells stay taken until then). Nothing outside the selection is removed: built
+belts are cut exactly at the selection edge, but holo belts only go away by vanilla chunks of 4-5
+cells, so a holo chunk (or an underground pair) crossing the edge is kept. The status line counts the
+kept cells.
 
 ### Save and reuse a blueprint
 1. Select an area as above.
