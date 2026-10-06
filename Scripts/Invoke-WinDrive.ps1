@@ -296,4 +296,4 @@ $inputCommands = $Commands | ForEach-Object { ($_ -split ' ')[0] } | Where-Objec
 if ($inputCommands -and $idle -lt $MinIdleSeconds) {
     throw "User active $([math]::Round($idle, 1))s ago (< $MinIdleSeconds s). Ask the user to step away, or lower -MinIdleSeconds."
 }
-if (-not [WinDrive]::Run($Proc, $Commands)) { exit 1 }
+exit $(if ([WinDrive]::Run($Proc, $Commands)) { 0 } else { 1 })
