@@ -24,6 +24,8 @@ Verify mod behavior in the running game with the cheapest reliable channel, with
   - `focus` clicks the title bar, never the game client area; borderless window -> `fail` (ask the user to click the game).
 - Upstream behaviors removed: unconditional Alt tap into the current foreground app, topmost + click at client top-center (could hit HUD), unguarded cursor moves, long-running stdin mode.
 - Read-only commands (`rect`, `fg`, `idle`, `wait`, `size`) skip the idle gate.
+- **Verified in game 2026-10-06** (windowed, client `0 0 5120 1440`, borderless so `focus` relies on the game already being foreground or SetForegroundWindow): `key 0x1B` opens the pause menu; `move`/`click` at full-size screenshot coords hit menu buttons exactly (Continue at ~`2558 527`); Continue closes the menu. Full round trip: screenshot -> Esc -> screenshot -> click -> screenshot.
+- Hover check before clicking: `move x y` + full-size capture + ffmpeg `crop` around the target shows the button highlight cheaply.
 
 ## Pitfalls & Dead Ends
 - gfxcapture cannot capture a minimized window; a covered window is fine.
