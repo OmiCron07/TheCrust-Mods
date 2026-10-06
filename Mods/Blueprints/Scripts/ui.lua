@@ -204,6 +204,7 @@ function UI.Create(PC, Position, KeyHelp)
     Section(V, "SELECTION")
     HRow(V, {
         (Button("Select area", "SelectArea")),
+        (Button("Copy", "Copy")),
         (Button("Copy + paste", "CopySelection")),
         (Button("Paste clipboard", "PasteClipboard")),
     })

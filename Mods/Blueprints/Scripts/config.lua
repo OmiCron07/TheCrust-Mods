@@ -22,6 +22,8 @@ local Config = {
         -- which do nothing while no vanilla module is being placed).
         RotateClockwise = { Key = "R", Modifiers = {} },
         RotateCounterClockwise = { Key = "R", Modifiers = { "SHIFT" } },
+        -- While pasting: mirror the blueprint (same key as vanilla module mirroring).
+        Mirror = { Key = "T", Modifiers = {} },
     },
 
     -- While pasting: left click places the ghosts, right click cancels.

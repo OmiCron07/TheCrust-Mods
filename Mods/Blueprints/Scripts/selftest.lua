@@ -82,6 +82,33 @@ for Dir = 0, 3 do
     end
 end
 
+-- Mirror: directions follow mirrored offsets; mirroring twice restores the blueprint.
+for Dir = 0, 3 do
+    local D = ({ [0] = { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } })[Dir]
+    assert(Grid.DirectionBetween(0, 0, -D[1], D[2]) == Grid.MirrorDir(Dir), "MirrorDir " .. Dir)
+end
+local Capture = require("capture")
+local Src = {
+    Layer = 0, Links = { { 1, 1 } },
+    Modules = { { Class = "X", DR = 1.5, DC = 2, Turns = 1, Mirrored = false, Cells = { { 1, 2 }, { 2, 2 } } } },
+    Belts = { { { 0, 0, 2 }, { 1, 0, 1 }, { 1, 1, 1 } } },
+    Undergrounds = { { { 3, 0 }, { 5, 0 }, 2 } },
+    Distributors = { { DR = 2, DC = -1, Outputs = { { Dir = 0, Types = { "A" } } }, Inputs = { { Dir = 1, Level = 0 } } } },
+}
+local Mir = Capture.Mirror(Src)
+local Mod = Mir.Modules[1]
+assert(Mod.DR == -1.5 and Mod.DC == 2 and Mod.Turns == 3 and Mod.Mirrored == true and Mod.Cells[2][1] == -2)
+assert(Src.Modules[1].DR == 1.5 and Src.Belts[1][1][3] == 2, "source must stay untouched")
+local Path1 = Mir.Belts[1]
+for i = 1, #Path1 - 1 do
+    assert(Grid.DirectionBetween(Path1[i][1], Path1[i][2], Path1[i + 1][1], Path1[i + 1][2]) == Path1[i][3], "mirrored belt dir " .. i)
+end
+assert(Mir.Undergrounds[1][2][1] == -5 and Mir.Undergrounds[1][3] == 0)
+assert(Mir.Distributors[1].DR == -2 and Mir.Distributors[1].Outputs[1].Dir == 2 and Mir.Distributors[1].Inputs[1].Dir == 1)
+local Back2 = Capture.Mirror(Mir)
+assert(Back2.Modules[1].DR == 1.5 and Back2.Modules[1].Turns == 1 and Back2.Modules[1].Mirrored == false)
+assert(Back2.Belts[1][3][3] == 1 and Back2.Distributors[1].Outputs[1].Dir == 0 and Back2.Links == Src.Links)
+
 -- Belt decomposition against real sections captured from a save (BuiltSectionStates).
 assert(CheckRoundTrip("straight", { 83787, 83786, 83785, 83784 }) == 1)
 assert(CheckRoundTrip("two cells", { 80984, 80985 }) == 1)

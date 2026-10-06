@@ -267,6 +267,45 @@ function Capture.Summary(BP)
     return S
 end
 
+-- Mirrored copy of BP (BP is left untouched): rows flipped in the blueprint frame (dRow -> -dRow),
+-- like vanilla MirrorModule (actor scale X = -1 before the yaw); a paste then rotates it as usual.
+-- A module keeps its footprint mirrored with yaw T -> -T and its mirror flag toggled.
+function Capture.Mirror(BP)
+    local function Dirs(List)
+        local T = {}
+        for i, E in ipairs(List) do
+            local C = {}
+            for K, V in pairs(E) do C[K] = V end
+            C.Dir = Grid.MirrorDir(E.Dir)
+            T[i] = C
+        end
+        return T
+    end
+    local M = {}
+    for K, V in pairs(BP) do M[K] = V end
+    M.Modules, M.Belts, M.Undergrounds, M.Distributors = {}, {}, {}, {}
+    for i, Mod in ipairs(BP.Modules) do
+        local C = {}
+        for K, V in pairs(Mod) do C[K] = V end
+        C.DR, C.Turns, C.Mirrored = -Mod.DR, (-Mod.Turns) % 4, not Mod.Mirrored
+        C.Cells = {}
+        for j, Cell in ipairs(Mod.Cells) do C.Cells[j] = { -Cell[1], Cell[2] } end
+        M.Modules[i] = C
+    end
+    for i, Path in ipairs(BP.Belts) do
+        local P = {}
+        for j, Cell in ipairs(Path) do P[j] = { -Cell[1], Cell[2], Cell[3] and Grid.MirrorDir(Cell[3]) } end
+        M.Belts[i] = P
+    end
+    for i, U in ipairs(BP.Undergrounds or {}) do
+        M.Undergrounds[i] = { { -U[1][1], U[1][2] }, { -U[2][1], U[2][2] }, Grid.MirrorDir(U[3]) }
+    end
+    for i, D in ipairs(BP.Distributors or {}) do
+        M.Distributors[i] = { DR = -D.DR, DC = D.DC, Outputs = Dirs(D.Outputs), Inputs = Dirs(D.Inputs) }
+    end
+    return M
+end
+
 function Capture.IsEmpty(BP)
     return #BP.Modules == 0 and #BP.Belts == 0
 end

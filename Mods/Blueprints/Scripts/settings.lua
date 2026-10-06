@@ -129,6 +129,34 @@ function Settings.CaptureIO(M)
     return List
 end
 
+-- IO settings of a mirrored blueprint module the game did not mirror (bCanMirror false, e.g.
+-- storages): its belts arrive on the IO cells mirrored in the module frame (local row flipped), so
+-- each setting moves to the index of that cell. Cells without a mirrored counterpart keep theirs.
+function Settings.MirrorIO(M, List, Geo)
+    local L = M:K2_GetActorLocation()
+    local R0, C0 = Game.WorldToRowCol(Geo, L.X, L.Y)
+    local Turns = math.floor(M:K2_GetActorRotation().Yaw / 90 + 0.5) % 4
+    local Local = {}
+    for i, IO in ipairs(IOCells(M)) do
+        if Game.Valid(IO) then
+            local R, C = Grid.ToRowCol(IO.CellId)
+            Local[i] = { Grid.Rotate(R - R0, C - C0, -Turns) }
+        end
+    end
+    local Out = {}
+    for i, P in pairs(Local) do
+        local To = i
+        for j, Q in pairs(Local) do
+            if math.abs(Q[1] + P[1]) < 0.25 and math.abs(Q[2] - P[2]) < 0.25 then To = j end
+        end
+        Out[To] = List[i]
+    end
+    for i = 1, #List do
+        if Out[i] == nil then Out[i] = List[i] end
+    end
+    return Out
+end
+
 -- Applies captured IO settings to a freshly placed module of the same class.
 -- Returns the number of IO cells whose settings do not read back as captured.
 function Settings.ApplyIO(M, List)

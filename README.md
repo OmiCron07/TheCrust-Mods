@@ -75,6 +75,7 @@ once with **Build selection**.
 | `Shift+K` | Start construction of the planned modules and holo belts in the selection |
 | `Ctrl+Alt+K` | Switch pasting between planning ghosts and direct construction |
 | `R` / `Shift+R` | While pasting: rotate clockwise / counter clockwise |
+| `T` | While pasting: mirror the blueprint |
 | Left / right click | While pasting: place the ghosts / cancel |
 
 Distributors and module IO cell settings (filters, priorities, locks, overflow, IO swaps) are

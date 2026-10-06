@@ -39,6 +39,11 @@ function Grid.RotateDir(Dir, QuarterTurns)
     return (Dir - QuarterTurns) % 4
 end
 
+-- Direction after mirroring rows (dRow -> -dRow): Up <-> Down, Left / Right unchanged.
+function Grid.MirrorDir(Dir)
+    return Dir % 2 == 0 and (Dir + 2) % 4 or Dir
+end
+
 function Grid.DirectionBetween(R1, C1, R2, C2)
     local DR, DC = R2 - R1, C2 - C1
     for Dir, D in pairs(DirDelta) do

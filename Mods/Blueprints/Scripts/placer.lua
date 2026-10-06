@@ -463,9 +463,13 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
     -- Settings last: belt connections and construction (holo sections moved to the built grid)
     -- happen before.
     for i, M in pairs(Placed) do
-        local IO = BP.Modules[i].IO
-        if IO and Game.Valid(M) then
-            local Ok, Mismatches = pcall(Settings.ApplyIO, M, IO)
+        local Mod = BP.Modules[i]
+        if Mod.IO and Game.Valid(M) then
+            local Ok, Mismatches = pcall(function()
+                local IO = Mod.IO
+                if Mod.Mirrored and not M.IsMirrored then IO = Settings.MirrorIO(M, IO, Geo) end
+                return Settings.ApplyIO(M, IO)
+            end)
             if Ok then
                 Report.SettingsMismatches = Report.SettingsMismatches + Mismatches
             else

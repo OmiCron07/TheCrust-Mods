@@ -91,6 +91,8 @@ local function KeyHelp()
     end
     local CW, CCW = KeyLabel(Config.Keys.RotateClockwise), KeyLabel(Config.Keys.RotateCounterClockwise)
     if CW or CCW then Lines[#Lines + 1] = { table.concat({ CW, CCW }, " / "), "Rotate while pasting" } end
+    local Mirror = KeyLabel(Config.Keys.Mirror)
+    if Mirror then Lines[#Lines + 1] = { Mirror, "Mirror while pasting" } end
     Lines[#Lines + 1] = { "Left click", "Place ghosts / drag the selection" }
     Lines[#Lines + 1] = { "Right click", "Clear selection / stop pasting" }
     return Lines
@@ -134,7 +136,7 @@ local function StartPaste(PC, BP, Label)
     local Note = ""
     if BP.Layer ~= State.Layer then Note = " (made on " .. (LayerNames[BP.Layer] or "?") .. ")" end
     local As = State.PasteAsConstruction and "construction" or "planning ghosts"
-    Notify("Pasting " .. Label .. Note .. " as " .. As .. ": left click places, R / Shift+R rotates, right click stops")
+    Notify("Pasting " .. Label .. Note .. " as " .. As .. ": left click places, R / Shift+R rotates, T mirrors, right click stops")
 end
 
 local function SelectionBox()
@@ -182,6 +184,11 @@ local function HandleAction(PC, Action, Index)
     Log("Action " .. Action .. " " .. tostring(Index))
     if Action == "SelectArea" then
         StartSelect(PC)
+    elseif Action == "Copy" then
+        if HasSelection() then
+            State.Clipboard = State.Captured
+            Notify("Selection copied to the clipboard")
+        else Notify("Select an area first") end
     elseif Action == "CopySelection" then
         if HasSelection() then StartPaste(PC, State.Captured, "selection")
         else Notify("Select an area first") end
@@ -418,6 +425,15 @@ local function Rotate(PC, Delta)
     State.Paste.Dirty = true
 end
 
+-- Swaps in a mirrored copy (the clipboard / library blueprint stays as is); the preview restarts
+-- because its extractor probes were spawned with the previous mirror state.
+local function Mirror(PC)
+    if State.Mode ~= "pasting" then return end
+    local P = State.Paste
+    P.BP = Capture.Mirror(P.BP)
+    P.Dirty, P.PreviewStarted = true, false
+end
+
 Bind("TogglePanel", function()
     UI.SetVisible(not UI.IsVisible())
     RefreshLibrary()
@@ -429,6 +445,7 @@ Bind("BuildSelection", function(PC) HandleAction(PC, "BuildSelection") end)
 Bind("TogglePasteMode", function(PC) HandleAction(PC, "TogglePasteMode") end)
 Bind("RotateClockwise", function(PC) Rotate(PC, 1) end)
 Bind("RotateCounterClockwise", function(PC) Rotate(PC, 3) end)
+Bind("Mirror", Mirror)
 
 -- Game-thread tick: hooked on a GodPawn function the game calls every frame (see ZoomToCursor).
 local TickHookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"

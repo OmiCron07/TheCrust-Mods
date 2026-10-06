@@ -19,9 +19,10 @@ pastes are cancelled when you switch layer.
    them.
 2. Click **Copy + paste** ③ (`Ctrl+Shift+K`). A preview follows the cursor (see
    [Paste preview](#paste-preview)).
-3. Rotate with `R` / `Shift+R`, then left click to place the ghosts. You stay in paste mode: keep
+3. Rotate with `R` / `Shift+R`, mirror with `T`, then left click to place the ghosts. You stay in paste mode: keep
    clicking to place more copies.
 4. Right click to stop pasting. **Paste clipboard** ④ (`Alt+K`) pastes the same thing again later.
+   **Copy** only puts the selection in the clipboard, without starting a paste.
 
 ### Save and reuse a blueprint
 1. Select an area as above.
@@ -43,6 +44,7 @@ pastes are cancelled when you switch layer.
 |---|---------|--------|--------------|
 | 1 | Status line | | Result of the last action and what to do next (e.g. "Drag with the left mouse button over the area"). |
 | 2 | Select area | `Ctrl+K` | Starts an area selection: press and drag the left mouse button. Right click cancels or clears the selection. |
+| | Copy | | Copies the selection to the clipboard without pasting (button left of **Copy + paste**). |
 | 3 | Copy + paste | `Ctrl+Shift+K` | Copies the selection to the clipboard and starts pasting it. |
 | 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied selection or the last placed blueprint. |
 | 5 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
@@ -65,6 +67,7 @@ pastes are cancelled when you switch layer.
 | `Shift+K` | Start construction of the planned modules and holo belts in the selection |
 | `Ctrl+Alt+K` | Switch pasting between planning ghosts and direct construction |
 | `R` / `Shift+R` | While pasting: rotate clockwise / counter clockwise |
+| `T` | While pasting: mirror the blueprint (like vanilla module mirroring; combine with `R` for any orientation) |
 | Left click | While selecting: drag the area. While pasting: place the ghosts (stay in paste mode) |
 | Right click | Cancel / clear the selection, stop pasting |
 
@@ -91,10 +94,14 @@ pastes are cancelled when you switch layer.
   A pair cut by the selection is not copied.
 - Distributors (splitters / mergers), recreated from the belts joining them, with all their
   settings: allowed resources, priority, hand-tuned, blocked and locked flags and priority level of
-  each output, priority level of each input. Settings follow the rotation of the paste.
+  each output, priority level of each input. Settings follow the rotation and mirroring of the paste.
 - Electric wires whose two ends are both copied modules.
 
 The paste status reports settings that could not be applied (`N settings not applied`).
+
+Mirroring flips the whole blueprint like vanilla `T` flips a module: each module is mirrored too.
+Modules the game never mirrors (storages) keep their shape; their IO settings follow the mirrored
+belts.
 
 Not supported yet: storage limits, belt tiers. Blueprints saved before distributor and
 settings support must be captured again to include them.
