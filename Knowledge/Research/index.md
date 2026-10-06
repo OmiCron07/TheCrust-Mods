@@ -11,4 +11,5 @@ Directory: `Research/`
 | [Game Structure & Pak Packages Analysis](GameStructure.md) | Research | Reverse-engineering analysis of The Crust binary layout, pak packages, and mo... |
 | [Initial Project Setup & Baseline Verification](InitialSetup.md) | Research | Initial bootstrap state and verified prerequisites. |
 | [Intro Cinematics and Movie Playback Architecture](IntroCinematicsAndMovies.md) | Research | Reverse engineering of startup logos, narrative cutscenes, and WmfMedia playb... |
+| [Regolith Composition Mixing & Refinery Output](RegolithComposition.md) | Research | How regolith carries an oxide composition map, how storages blend it, and how... |
 
