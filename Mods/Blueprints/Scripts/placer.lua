@@ -414,30 +414,6 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
         return R >= R0 and R <= R1 and C >= C0 and C <= C1
     end
 
-    for _, M in ipairs(Game.LayerModules(Layer)) do
-        local Loc = M:K2_GetActorLocation()
-        local Row, Col = Game.WorldToRowCol(Geo, Loc.X, Loc.Y)
-        Row, Col = math.floor(Row + 0.5), math.floor(Col + 0.5)
-        local Agency = M.BuildingAgency
-        if Row >= R0 and Row <= R1 and Col >= C0 and Col <= C1 and Game.IsCopyAllowed(M) and not M.IsFromPackage
-            and not (Game.Valid(Agency) and Agency.MarkedOnDismantle) then
-            -- The result shows up later in the frame (planned and under construction modules are
-            -- destroyed after the call returns), so orders are counted, not results.
-            local Ok, Locked = pcall(function()
-                if M:ActorHasTag(FName("LockedDemolition")) then return true end
-                PC:ToggleModuleDismantle(M)
-                return false
-            end)
-            if not Ok then
-                Report.Errors[#Report.Errors + 1] = "dismantle: " .. tostring(Locked)
-            elseif Locked then
-                Report.ModulesKept = Report.ModulesKept + 1
-            else
-                Report.Modules = Report.Modules + 1
-            end
-        end
-    end
-
     local function Cells(Arr)
         local T = {}
         Arr:ForEach(function(_, V) T[#T + 1] = V:get() end)
@@ -461,36 +437,39 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
     CM:SetConveyorMode(2) -- Vanilla demolition mode (GodPlayer_PC StartDeconstruct).
     local Ok, Err = pcall(function()
         -- Built belts: DeleteWindowedCells removes exactly the cells of LastDestructionWindowCellIDs
-        -- (the vanilla hover fills it with a 4-5 cell chunk), so each section loses only its cells
-        -- inside the rectangle.
-        local BuiltCells, Order = {}, {}
+        -- (the vanilla hover fills it with a contiguous 4-5 cell chunk of one section). Every deletion
+        -- changes the sections around it, so each one re-reads the section owning the cell and only
+        -- passes the contiguous run of its cells inside the rectangle (stale cells crashed the game).
+        local Pending = {}
         for R = R0, R1 do
             for C = C0, C1 do
                 local Cell = Grid.ToCell(R, C)
-                local Built = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
-                if Game.Valid(Built) then
-                    if PairInside(Built) then
-                        local Key = Built:GetAddress()
-                        if not BuiltCells[Key] then
-                            BuiltCells[Key] = {}
-                            Order[#Order + 1] = Key
-                        end
-                        table.insert(BuiltCells[Key], Cell)
-                    else
-                        Report.BeltCellsKept = Report.BeltCellsKept + 1
-                    end
-                end
+                if Game.Valid(CM.SectionGrid:GetSectionAtCellID_Safe(Cell)) then Pending[#Pending + 1] = Cell end
             end
         end
-        for _, Key in ipairs(Order) do
-            local List = BuiltCells[Key]
-            -- Gone already when it was the other end of a deleted underground pair.
-            if Game.Valid(CM.SectionGrid:GetSectionAtCellID_Safe(List[1])) then
-                local Window = CM.LastDestructionWindowCellIDs
-                Window:Empty()
-                for i, Cell in ipairs(List) do Window[i] = Cell end
-                CM:DeleteWindowedCells(List[1])
-                Report.BeltCells = Report.BeltCells + #List
+        for _, Cell in ipairs(Pending) do
+            local Built = CM.SectionGrid:GetSectionAtCellID_Safe(Cell)
+            if Game.Valid(Built) then
+                local List = Cells(Built.State.CellIds)
+                local At
+                for i, Id in ipairs(List) do
+                    if Id == Cell then
+                        At = i
+                        break
+                    end
+                end
+                if At and PairInside(Built) then
+                    local First, Last = At, At
+                    while First > 1 and Inside(List[First - 1]) do First = First - 1 end
+                    while Last < #List and Inside(List[Last + 1]) do Last = Last + 1 end
+                    local Window = CM.LastDestructionWindowCellIDs
+                    Window:Empty()
+                    for i = First, Last do Window[i - First + 1] = List[i] end
+                    CM:DeleteWindowedCells(Cell)
+                    Report.BeltCells = Report.BeltCells + Last - First + 1
+                else
+                    Report.BeltCellsKept = Report.BeltCellsKept + 1
+                end
             end
         end
         -- Holo belts: DeleteHoloSectionAtCellID always removes the vanilla chunk (custom windows are
@@ -517,6 +496,31 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
     CM:SetConveyorMode(PrevMode)
     CM:UpdateHoloSectionCosts()
     if not Ok then Report.Errors[#Report.Errors + 1] = "belts: " .. tostring(Err) end
+
+    -- Modules after the belts: a built module's dismantle order also changes the sections on its IO cells.
+    for _, M in ipairs(Game.LayerModules(Layer)) do
+        local Loc = M:K2_GetActorLocation()
+        local Row, Col = Game.WorldToRowCol(Geo, Loc.X, Loc.Y)
+        Row, Col = math.floor(Row + 0.5), math.floor(Col + 0.5)
+        local Agency = M.BuildingAgency
+        if Row >= R0 and Row <= R1 and Col >= C0 and Col <= C1 and Game.IsCopyAllowed(M) and not M.IsFromPackage
+            and not (Game.Valid(Agency) and Agency.MarkedOnDismantle) then
+            -- The result shows up later in the frame (planned and under construction modules are
+            -- destroyed after the call returns), so orders are counted, not results.
+            local Ok, Locked = pcall(function()
+                if M:ActorHasTag(FName("LockedDemolition")) then return true end
+                PC:ToggleModuleDismantle(M)
+                return false
+            end)
+            if not Ok then
+                Report.Errors[#Report.Errors + 1] = "dismantle: " .. tostring(Locked)
+            elseif Locked then
+                Report.ModulesKept = Report.ModulesKept + 1
+            else
+                Report.Modules = Report.Modules + 1
+            end
+        end
+    end
     return Report
 end
 
