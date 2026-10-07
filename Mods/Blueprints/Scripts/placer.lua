@@ -524,6 +524,71 @@ function Placer.DeleteArea(PC, Layer, R0, C0, R1, C1)
     return Report
 end
 
+-- Upgrades every belt section (built or holo) with a cell inside a cell rectangle (inclusive) by one
+-- tier through the vanilla upgrade tool (ECInputMode 5: hover then click, which checks and takes the
+-- credits and caps at the researched MaxConveyorUpgradeLevel). Tier is per section, so a section
+-- crossing the rectangle edge is upgraded whole. The game has no downgrade.
+function Placer.UpgradeArea(PC, Layer, R0, C0, R1, C1)
+    local Report = { Upgraded = 0, AtMax = 0, NoFunds = 0, Errors = {} }
+    local CM = Game.ConveyorManager(PC, Layer)
+    local Geo = Game.Geometry(CM)
+    local Max = math.floor(CM.MaxConveyorUpgradeLevel)
+
+    -- One cell per section, with its tier: sections are re-read by cell before each click because an
+    -- upgrade can merge or split the sections around it.
+    local Targets, Seen = {}, {}
+    for R = R0, R1 do
+        for C = C0, C1 do
+            local Cell = Grid.ToCell(R, C)
+            for _, SG in ipairs({ CM.SectionGrid, CM.HoloSectionGrid }) do
+                local S = SG:GetSectionAtCellID_Safe(Cell)
+                if Game.Valid(S) and not Seen[S:GetAddress()] then
+                    Seen[S:GetAddress()] = true
+                    Targets[#Targets + 1] = { Grid = SG, Cell = Cell, Tier = S.State.ConveyorTier }
+                end
+            end
+        end
+    end
+
+    local PrevMode = CM:GetConveyorMode()
+    CM:SetConveyorMode(5)
+    local Ok, Err = pcall(function()
+        for _, T in ipairs(Targets) do
+            local S = T.Grid:GetSectionAtCellID_Safe(T.Cell)
+            if Game.Valid(S) and S.State.ConveyorTier == T.Tier then
+                if T.Tier >= Max then
+                    Report.AtMax = Report.AtMax + 1
+                else
+                    local X, Y = Game.RowColToWorld(Geo, Grid.ToRowCol(T.Cell))
+                    local Loc = { X = X, Y = Y, Z = Geo.Z }
+                    CM:OnHover(Loc)
+                    CM:MainPointerAction(Loc)
+                    local After = T.Grid:GetSectionAtCellID_Safe(T.Cell)
+                    if Game.Valid(After) and After.State.ConveyorTier > T.Tier then
+                        Report.Upgraded = Report.Upgraded + 1
+                    else
+                        Report.NoFunds = Report.NoFunds + 1
+                    end
+                end
+            end
+        end
+    end)
+    pcall(function() CM:ClearSelectionOnSectionVisual() end)
+    CM:SetConveyorMode(PrevMode)
+    CM:UpdateHoloSectionCosts()
+    if not Ok then Report.Errors[#Report.Errors + 1] = "upgrade: " .. tostring(Err) end
+    Report.Max = Max
+    return Report
+end
+
+function Placer.UpgradeSummary(R)
+    local S = string.format("Upgraded %d belt sections", R.Upgraded)
+    if R.AtMax > 0 then S = S .. string.format(" | %d already at the max researched tier (%d)", R.AtMax, R.Max) end
+    if R.NoFunds > 0 then S = S .. string.format(" | %d not upgraded (not enough credits)", R.NoFunds) end
+    if #R.Errors > 0 then S = S .. " | " .. R.Errors[1] end
+    return S
+end
+
 function Placer.DeleteSummary(R)
     local S = string.format("Deleted %d modules (built ones are dismantled by robots), %d belt cells", R.Modules, R.BeltCells)
     if R.ModulesKept > 0 then S = S .. string.format(" | %d modules kept (locked)", R.ModulesKept) end

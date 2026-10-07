@@ -215,6 +215,7 @@ function UI.Create(PC, Position, KeyHelp)
     HRow(V, {
         ModeButton,
         (Button("Build selection", "BuildSelection", nil, Colors.Green)),
+        (Button("Upgrade belts", "UpgradeBelts", nil, Colors.Green)),
         (Button("Cut", "Cut")),
         (Button("Delete", "DeleteSelection", nil, Colors.Red, true)),
     })

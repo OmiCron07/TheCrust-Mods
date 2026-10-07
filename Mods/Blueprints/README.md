@@ -28,7 +28,7 @@ pastes are cancelled when you switch layer.
 
 ### Move or delete an area
 1. Select an area as above.
-2. **Cut** (`Shift+Delete`, right of **Build selection**) deletes the selection and starts pasting
+2. **Cut** (`Shift+Delete`, right of **Upgrade belts**) deletes the selection and starts pasting
    it: place it elsewhere, then right click to stop. The cut elements stay in the clipboard (`Alt+K`).
 3. **Delete** (`Delete`, right of **Cut**) deletes the selection. The button asks for a second click
    (**Confirm?**); the `Delete` key deletes right away.
@@ -55,6 +55,14 @@ kept cells.
 - Or paste directly as construction: switch **Paste as** ⑤ to **Build** (`Ctrl+Alt+K`), see
   [Paste modes](#paste-modes).
 
+### Upgrade belts
+Select an area, then click **Upgrade belts** (right of **Build selection**). Every belt section with a
+cell in the selection (built or holo) goes up one tier, exactly like clicking it with the vanilla
+upgrade tool: credits are taken the same way and the tier stops at the highest one you researched.
+The tier belongs to a whole section, so a section crossing the selection edge is upgraded whole.
+The status line counts upgraded sections, sections already at the max tier and sections skipped for
+lack of credits. The game has no downgrade.
+
 ## The panel
 | # | Element | Hotkey | What it does |
 |---|---------|--------|--------------|
@@ -65,7 +73,8 @@ kept cells.
 | 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied or cut selection, or the last placed blueprint. |
 | 5 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
 | 6 | Build selection | `Shift+K` | Starts construction of the planned modules and holo belts inside the selection. |
-| | Cut | `Shift+Delete` | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Build selection**). |
+| | Upgrade belts | | Upgrades the belts (built and holo) of the selection by one tier with the vanilla upgrade tool, see [Upgrade belts](#upgrade-belts). |
+| | Cut | `Shift+Delete` | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Upgrade belts**). |
 | | Delete | `Delete` | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?** (the key deletes right away). |
 | 7 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
 | 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |

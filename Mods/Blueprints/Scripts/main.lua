@@ -263,6 +263,12 @@ local function HandleAction(PC, Action, Index)
         local Report = Placer.BuildArea(PC, State.Layer, S.R0, S.C0, S.R1, S.C1)
         for _, E in ipairs(Report.Errors) do Log(E) end
         Notify(Placer.BuildSummary(Report))
+    elseif Action == "UpgradeBelts" then
+        local S = State.Selection
+        if not (S and State.Mode == "selected") then Notify("Select an area first") return end
+        local Report = Placer.UpgradeArea(PC, State.Layer, S.R0, S.C0, S.R1, S.C1)
+        for _, E in ipairs(Report.Errors) do Log(E) end
+        Notify(Placer.UpgradeSummary(Report))
     elseif Action == "Refresh" then
         RefreshLibrary()
     end
