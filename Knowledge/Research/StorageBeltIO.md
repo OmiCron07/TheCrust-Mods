@@ -28,8 +28,11 @@ Explain how a storage feeds and drains its belts, to design several bulk storage
 - `IsStorageFullerThanThreshold()` flips between 44.8 % and 53.1 % of `CurrentResourceLimit` across 70 storages (threshold likely 50 %).
 - Live ring of 4 Big Bulk Storages (IronOxide) linked port-to-port with overflow ports: one at 2000/2000, neighbours at 35 / 50 / ~800, no stock moved from the full one to the 2.5 % one over 20 s. Overflow ports do not drain stock like a normal output.
 
+- Same ring, external input into the full storage (620): 620 -> 679 -> 502 -> 561 relayed the input through overflow ports while 679 / 502 stock stayed flat (60 / 51, 3 %), and only 561 grew (~2.2/s, 1543 -> 1567 in 11 s). An overflow port forwards incoming items even when its storage is nearly empty; stock is kept only when the overflow belt cannot take them.
+
 ## Inference (not verified live)
-- Overflow port = spill-over output: forwards what the storage cannot keep (above threshold / incoming excess), not a pool equalizer. Exact trigger (stock above 50 % vs incoming items only) unknown.
+- Overflow port = pass-through / spill-over output, not a pool equalizer: in a ring every storage relays input to the one before a full storage, so a single storage fills.
+- Ring with normal outputs: when the input storage is full it only accepts what it emits, and the ring return belt competes with the external input for that slot, so input stutters. Prefer a tree (input storage -> neighbours, no return link).
 - Belt item counts read through `UCSection.State.Resources` were inconsistent between probes (9 then 0): do not trust them for flow measurement.
 - Ring of N storages (each outputs into the next): input fills only the storage receiving it, then cascades once it is full. A consumer draining storage B is refilled by A at one belt speed, A by its upstream, so drain spreads around the ring. Pool limit: refill rate = one ring-belt speed per storage.
 - Simplest pool: one Large Bulk Storage with several output ports; every port draws from the same stock.
