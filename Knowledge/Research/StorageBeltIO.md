@@ -24,7 +24,13 @@ Explain how a storage feeds and drains its belts, to design several bulk storage
 - Distributor sections (`ECSectionType::Distributor`) carry per-output / per-input priorities (`FCPriorityStates`, `SetOutputPriority`, `SetIsPriorityOutput`). UI: "Programmable Splitter", "Priority output will always take the resource first if possible."
 - In-game tip: "Conveyor splitters require time to divide resources into multiple streams. Instead, you can use a bulk storage." Bulk storage descriptions: "Can be used as a conveyor distributor." Bulk 4000 regolith, Large Bulk 20000.
 
+- **"Unload overflow here"** (live DevBridge probe 2026-10-06): toggle in `W_ConveyorOutputSetting`, calls `BP_CIOCell."Flip OverflowState"` -> native `Flip_bOverflow`. Shown only where `GetCouldUseOverflow()` is true: storage ports only (`MB_BigBulkStorage`, `MB_OneResourceStorage`, `IOType` CanChoose); every production module port returns false. When on: `bAcceptOverflow = true` on that output cell, storage `OverflowOutputCount` = number of overflow ports, `DoStorageHasOverflow()` true on all its cells.
+- `IsStorageFullerThanThreshold()` flips between 44.8 % and 53.1 % of `CurrentResourceLimit` across 70 storages (threshold likely 50 %).
+- Live ring of 4 Big Bulk Storages (IronOxide) linked port-to-port with overflow ports: one at 2000/2000, neighbours at 35 / 50 / ~800, no stock moved from the full one to the 2.5 % one over 20 s. Overflow ports do not drain stock like a normal output.
+
 ## Inference (not verified live)
+- Overflow port = spill-over output: forwards what the storage cannot keep (above threshold / incoming excess), not a pool equalizer. Exact trigger (stock above 50 % vs incoming items only) unknown.
+- Belt item counts read through `UCSection.State.Resources` were inconsistent between probes (9 then 0): do not trust them for flow measurement.
 - Ring of N storages (each outputs into the next): input fills only the storage receiving it, then cascades once it is full. A consumer draining storage B is refilled by A at one belt speed, A by its upstream, so drain spreads around the ring. Pool limit: refill rate = one ring-belt speed per storage.
 - Simplest pool: one Large Bulk Storage with several output ports; every port draws from the same stock.
 
