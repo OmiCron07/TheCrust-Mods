@@ -12,4 +12,5 @@ Directory: `Research/`
 | [Initial Project Setup & Baseline Verification](InitialSetup.md) | Research | Initial bootstrap state and verified prerequisites. |
 | [Intro Cinematics and Movie Playback Architecture](IntroCinematicsAndMovies.md) | Research | Reverse engineering of startup logos, narrative cutscenes, and WmfMedia playb... |
 | [Regolith Composition Mixing & Refinery Output](RegolithComposition.md) | Research | How regolith carries an oxide composition map, how storages blend it, and how... |
+| [Storage Belt Ports (IO Cells) & Multi-Storage Pooling](StorageBeltIO.md) | Research | How storage conveyor ports move resources between a storage and its belts, an... |
 
