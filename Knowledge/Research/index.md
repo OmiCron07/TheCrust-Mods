@@ -12,6 +12,7 @@ Directory: `Research/`
 | [Game Structure & Pak Packages Analysis](GameStructure.md) | Research | Reverse-engineering analysis of The Crust binary layout, pak packages, and mo... |
 | [Initial Project Setup & Baseline Verification](InitialSetup.md) | Research | Initial bootstrap state and verified prerequisites. |
 | [Intro Cinematics and Movie Playback Architecture](IntroCinematicsAndMovies.md) | Research | Reverse engineering of startup logos, narrative cutscenes, and WmfMedia playb... |
+| [Mining Zone Brush (Dig Zones Queue Ruler)](MiningZoneBrush.md) | Research | How the mining zone brush size cycles, which native calls build and paint bru... |
 | [Regolith Composition Mixing & Refinery Output](RegolithComposition.md) | Research | How regolith carries an oxide composition map, how storages blend it, and how... |
 | [Storage Belt Ports (IO Cells) & Multi-Storage Pooling](StorageBeltIO.md) | Research | How storage conveyor ports move resources between a storage and its belts, an... |
 

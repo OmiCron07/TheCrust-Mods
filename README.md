@@ -12,6 +12,7 @@ used to build them.
 | [Blueprints](#blueprints) | Copy, move or delete areas of your base and save them as reusable blueprints | [TheCrust-Blueprints.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-Blueprints.zip) |
 | [ZoomToCursor](#zoomtocursor) | Mouse wheel zooms toward the cursor instead of the screen center | [TheCrust-ZoomToCursor.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-ZoomToCursor.zip) |
 | [CheaperBelts](#cheaperbelts) | Belts and belt upgrades cost half the credits (configurable) | [TheCrust-CheaperBelts.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-CheaperBelts.zip) |
+| [BiggerMiningBrush](#biggerminingbrush) | Mining zone brush goes up to x10 instead of x3 (configurable) | [TheCrust-BiggerMiningBrush.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-BiggerMiningBrush.zip) |
 | [SkipIntro](#skipintro) | Skips the startup logo videos (story cinematics kept), no UE4SS needed | [TheCrust-SkipIntro.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-SkipIntro.zip) |
 | All mods | All the mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
 
@@ -105,6 +106,13 @@ the credits too. Both multipliers are in `Scripts\config.lua`: `BuildCostMultipl
 `UpgradeCostMultiplier` (1.0 = vanilla, 0.0 = free). Nothing is written to the save.
 
 Full documentation: [Mods/CheaperBelts/README.md](Mods/CheaperBelts/README.md).
+
+### BiggerMiningBrush
+The brush that paints mining zones for the drones goes up to x10 instead of x3. The brush size button
+still adds 1 per click (x1 to x10, then back to x1), with the vanilla round brush shape. Max size in
+`Scripts\config.lua`: `MaxBrushSize`.
+
+Full documentation: [Mods/BiggerMiningBrush/README.md](Mods/BiggerMiningBrush/README.md).
 
 ### SkipIntro
 Replaces the three startup videos (Unreal Engine logo, publisher and developer logos, title reveal) in
