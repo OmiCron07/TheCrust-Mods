@@ -58,6 +58,11 @@ local function HasBelt(CM, Cell)
         or Valid(CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell))
 end
 
+-- Cells an underground belt can pass under: belts and modules (vanilla accepts both).
+local function CanTunnel(CM, Cell)
+    return HasBelt(CM, Cell) or CM.GroundManager:GetCellModuleId(Cell) >= 0
+end
+
 local function HoloAt(CM, Cell)
     local S = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell)
     if Valid(S) then return S end
@@ -109,9 +114,9 @@ local function SubPathFailure(CM, Geo, Cells, Start)
     return Start + V.Fail
 end
 
--- Turns a blocked path into underground crossings. Each blocked run must be belts only, straight,
--- with free entry / exit cells at most UndergroundBuildSectionLength apart. Returns nil when the
--- path cannot be bridged (vanilla stays in charge).
+-- Turns a blocked path into underground crossings. Each blocked run must be belts or modules only,
+-- straight, with free entry / exit cells at most UndergroundBuildSectionLength apart. Returns nil
+-- when the path cannot be bridged (vanilla stays in charge).
 local function MakePlan(CM, Geo, V)
     if V.Fail < 1 or not CM.bUndergroundBeltUnlocked then return nil end
     local Cells = {}
@@ -121,12 +126,14 @@ local function MakePlan(CM, Geo, V)
     local Crossings, Tunneled = {}, {}
     local Start, Blocked = 1, V.Fail + 1
     while Blocked do
-        if not HasBelt(CM, Cells[Blocked]) then return nil end
+        if not CanTunnel(CM, Cells[Blocked]) then return nil end
         local Last = Blocked
-        while Last < N and HasBelt(CM, Cells[Last + 1]) do Last = Last + 1 end
+        while Last < N and CanTunnel(CM, Cells[Last + 1]) do Last = Last + 1 end
         local Entry, Exit = Blocked - 1, Last + 1
-        -- The start cell is the previous exit, or the path start (may itself be a belt to continue)
-        if Exit > N or Entry < Start or (Entry == Start and (Start > 1 or HasBelt(CM, Cells[1]))) then
+        -- The start cell is the previous exit, or the path start (may be a belt to continue or a
+        -- module IO cell)
+        if Exit > N or Entry < Start
+            or (Entry == Start and (Start > 1 or V.IOAtStart or CanTunnel(CM, Cells[1]))) then
             return nil
         end
         local Dir = Direction(Cells[Entry], Cells[Entry + 1])
