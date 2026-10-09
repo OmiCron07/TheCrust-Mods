@@ -14,6 +14,7 @@ used to build them.
 | [CheaperBelts](#cheaperbelts) | Belts and belt upgrades cost half the credits (configurable) | [TheCrust-CheaperBelts.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-CheaperBelts.zip) |
 | [BiggerMiningBrush](#biggerminingbrush) | Mining zone brush goes up to x10 instead of x3 (configurable) | [TheCrust-BiggerMiningBrush.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-BiggerMiningBrush.zip) |
 | [AutoUnderground](#autounderground) | Belts dragged across belts or modules go under them with underground belts | [TheCrust-AutoUnderground.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AutoUnderground.zip) |
+| [RegolithIcons](#regolithicons) | Dominant oxide icon over regolith extractors, refineries and bulk storages | [TheCrust-RegolithIcons.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-RegolithIcons.zip) |
 | [SkipIntro](#skipintro) | Skips the startup logo videos (story cinematics kept), no UE4SS needed | [TheCrust-SkipIntro.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-SkipIntro.zip) |
 | All mods | All the mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
 
@@ -122,6 +123,13 @@ vanilla red path that builds nothing. The preview shows the full path in blue. P
 the vanilla behavior.
 
 Full documentation: [Mods/AutoUnderground/README.md](Mods/AutoUnderground/README.md).
+
+### RegolithIcons
+An icon over each regolith extractor, refinery and bulk storage shows the dominant oxide of its regolith
+(titanium, iron, silicon or aluminium; slag ignored), or the regolith icon when the regolith is a blend of
+several deposits. Lines fed by different deposits are easy to keep apart. Nothing is written to the save.
+
+Full documentation: [Mods/RegolithIcons/README.md](Mods/RegolithIcons/README.md).
 
 ### SkipIntro
 Replaces the three startup videos (Unreal Engine logo, publisher and developer logos, title reveal) in

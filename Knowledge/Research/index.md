@@ -16,4 +16,5 @@ Directory: `Research/`
 | [Mining Zone Brush (Dig Zones Queue Ruler)](MiningZoneBrush.md) | Research | How the mining zone brush size cycles, which native calls build and paint bru... |
 | [Regolith Composition Mixing & Refinery Output](RegolithComposition.md) | Research | How regolith carries an oxide composition map, how storages blend it, and how... |
 | [Storage Belt Ports (IO Cells) & Multi-Storage Pooling](StorageBeltIO.md) | Research | How storage conveyor ports move resources between a storage and its belts, an... |
+| [World Icons over Modules (Production Indicator Widget)](ModuleWorldIcons.md) | Research | How to show a resource icon over a module in the world from UE4SS Lua, and th... |
 
