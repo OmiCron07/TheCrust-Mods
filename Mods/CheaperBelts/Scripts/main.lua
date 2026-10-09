@@ -30,6 +30,14 @@ local UpgradeMultiplier = Multiplier("UpgradeCostMultiplier")
 
 local CellCostFields = { "BeltCellCost", "DistributorCellCost", "UndergroundBeltCellCost" }
 
+local PanelClass = "/Game/Widgets/WidgetPanelTools/PipeLineWidgets/W_ConveyorsPanel.W_ConveyorsPanel_C"
+-- Belt price labels of the panel, tier 1 to 5 (each shows belt cell cost + cumulative tier cost)
+local TierLabels = { "convLvl0Cost", "ConvLvl1Cost", "convLvl2Cost", "convLvl3Cost", "convLvl3Cost_1" }
+
+local function Valid(Object)
+    return type(Object) == "userdata" and Object:IsValid()
+end
+
 -- Vanilla values are kept in shared variables: they survive UE4SS hot reloads, after which the
 -- subsystem still holds the values scaled by the previous instance of the mod.
 local function Vanilla(Key, Current)
@@ -44,7 +52,7 @@ end
 
 local function Apply()
     local Subsystem = FindFirstOf("ConveyorSubsystem")
-    if not (type(Subsystem) == "userdata" and Subsystem:IsValid()) then return end
+    if not Valid(Subsystem) then return end
 
     local Conveyor = Subsystem.ConveyorConfig
     for _, Field in ipairs(CellCostFields) do
@@ -57,9 +65,40 @@ local function Apply()
 
     print(string.format("[CheaperBelts] Belt cell cost %.0f, upgrade costs x%.2f\n",
         Conveyor.BeltCellCost, UpgradeMultiplier))
+    return Subsystem
 end
 
--- The subsystem already exists on a hot reload; on a cold start it appears before the first map.
+-- The belt panel fills its price labels once, in OnInitialized, straight from DT_ConveyorConfig
+-- (not from the subsystem): overwrite them with the scaled costs.
+local function RefreshPanel(Panel, Subsystem)
+    local Belt = Subsystem:GetCellCostBySectionType(1)
+    for i, Label in ipairs(TierLabels) do
+        Panel[Label]:SetCurrentValue(Belt + Subsystem:GetTierCost(i - 1))
+    end
+    Panel.DistributorCost:SetCurrentValue(Subsystem:GetCellCostBySectionType(2))
+    Panel.convUndergroundCost:SetCurrentValue(Subsystem:GetCellCostBySectionType(3))
+end
+
+local PanelHooked = false
+local function HookPanel()
+    if PanelHooked then return end
+    -- RegisterHook needs the Blueprint class loaded; load it so the first panel is not missed
+    if not Valid(StaticFindObject(PanelClass)) then
+        pcall(LoadAsset, (PanelClass:gsub("%.[^%.]+$", "")))
+    end
+    PanelHooked = pcall(RegisterHook, PanelClass .. ":OnInitialized", function(Context)
+        local Subsystem = Apply()
+        if Subsystem then RefreshPanel(Context:get(), Subsystem) end
+    end)
+end
+
+-- The subsystem and panel already exist on a hot reload; on a cold start they appear later.
 -- Writes are absolute (vanilla x multiplier), so applying again on every map load is harmless.
-Apply()
-RegisterInitGameStatePostHook(Apply)
+local Subsystem = Apply()
+local Panel = FindFirstOf("W_ConveyorsPanel_C")
+if Subsystem and Valid(Panel) then RefreshPanel(Panel, Subsystem) end
+
+RegisterInitGameStatePostHook(function()
+    Apply()
+    HookPanel()
+end)

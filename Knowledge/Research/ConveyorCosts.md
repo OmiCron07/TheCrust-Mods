@@ -22,6 +22,8 @@ Change belt prices from a Lua mod without touching paks or saves.
 - Each section stores its own `State.CostPerCell` (set via `UCSection:SetCostPerCell`), so the new price applies to sections created after the write.
 - Difficulty also has `ConveyorPricePercentFromDefault` (`FMainDifficultyGlobalDataCPP`, saved in `UEMSInfoSaveGame`); it is NOT folded into `GetCellCostBySectionType` (still 250 in a normal save). Not used by CheaperBelts.
 
+- **Belt panel prices** (`W_ConveyorsPanel_C`, `/Game/Widgets/WidgetPanelTools/PipeLineWidgets/`): `UCommonNumericTextBlock` labels `convLvl0Cost`, `ConvLvl1Cost`, `convLvl2Cost`, `convLvl3Cost`, `convLvl3Cost_1` (tier 1-5 = `BeltCellCost + GetTierCost(t)`: 250 / 750 / 1750 / 3750 / 7750), `DistributorCost`, `convUndergroundCost`. Written only by the ubergraph block of `OnInitialized` (entry 6126), from `GetDataTableRow(DT_ConveyorConfig, "Config")`, not from the subsystem: they stay vanilla after a subsystem write. `Label:SetCurrentValue(v)` updates the text (verified live 2026-10-08). The panel lives under `CrustGameInstance_C.W_MainWidget_C`.
+
 ## Pitfalls & Dead Ends
 - Scaling the live values relative to the current ones compounds on a UE4SS hot reload (the subsystem keeps the old scaled values). CheaperBelts caches vanilla values with `ModRef:SetSharedVariable` (survives hot reloads, reset on game restart) and always writes `vanilla x multiplier`.
 - Not verified yet: whether holo sections planned before the change get the new price (`UpdateHoloSectionCosts`), and whether the refund uses the stored `CostPerCell` or the current config.

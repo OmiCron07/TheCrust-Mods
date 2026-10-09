@@ -7,7 +7,8 @@ upgrading belt tiers. Half price by default, configurable.
 ## How it works
 The game copies `DT_ConveyorConfig` into `ConveyorSubsystem.ConveyorConfig` once per game launch and
 reads every belt price from there. The mod writes `vanilla x multiplier` into that copy at startup and on
-every map load. Nothing is written to the save: removing the mod restores vanilla prices on the next
+every map load. The belt panel labels read the DataTable directly (once, when the panel is created), so
+the mod also rewrites them with the scaled prices. Nothing is written to the save: removing the mod restores vanilla prices on the next
 launch.
 
 | Cost (credits per cell) | Vanilla | Default (x0.5) |
