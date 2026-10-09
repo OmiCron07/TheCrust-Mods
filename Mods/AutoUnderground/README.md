@@ -7,7 +7,8 @@ belt pair. In vanilla the path turns red past the first obstacle and the click b
 ## How it works
 - While you drag a belt (belt tool, second click pending), the mod reads the vanilla hover path. When it is
   blocked by belts or modules (built or planned), each blocked run becomes an underground pair: entry on the
-  free cell before the run, exit on the free cell after it.
+  free cell before the run, exit on the free cell after it. Close obstacles share one pair when it still
+  fits in the vanilla length (8 cells from entry to exit).
 - The preview turns fully blue, with no cube over the cells the path goes under.
 - On the click, the mod places the underground pairs with the vanilla underground tool, then the belts
   between them, all linked. Planning mode is respected like vanilla belts.

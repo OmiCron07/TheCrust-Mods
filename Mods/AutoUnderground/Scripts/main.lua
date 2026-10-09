@@ -115,7 +115,8 @@ local function SubPathFailure(CM, Geo, Cells, Start)
 end
 
 -- Turns a blocked path into underground crossings. Each blocked run must be belts or modules only,
--- straight, with free entry / exit cells at most UndergroundBuildSectionLength apart. Returns nil
+-- straight, with free entry / exit cells at most UndergroundBuildSectionLength apart. A run that
+-- still fits in the previous pair extends it (one pair under several close obstacles). Returns nil
 -- when the path cannot be bridged (vanilla stays in charge).
 local function MakePlan(CM, Geo, V)
     if V.Fail < 1 or not CM.bUndergroundBeltUnlocked then return nil end
@@ -123,31 +124,44 @@ local function MakePlan(CM, Geo, V)
     for i, P in ipairs(V.Points) do Cells[i] = CellAt(Geo, P.Translation.X, P.Translation.Y) end
     local N, MaxLength = #Cells, CM.UndergroundBuildSectionLength
 
-    local Crossings, Tunneled = {}, {}
+    local function Straight(From, To, Dir)
+        for i = From + 1, To do
+            if Direction(Cells[i - 1], Cells[i]) ~= Dir then return false end
+        end
+        return true
+    end
+
+    local Crossings = {}
     local Start, Blocked = 1, V.Fail + 1
     while Blocked do
         if not CanTunnel(CM, Cells[Blocked]) then return nil end
         local Last = Blocked
         while Last < N and CanTunnel(CM, Cells[Last + 1]) do Last = Last + 1 end
         local Entry, Exit = Blocked - 1, Last + 1
-        -- The start cell is the previous exit, or the path start (may be a belt to continue or a
-        -- module IO cell)
-        if Exit > N or Entry < Start
-            or (Entry == Start and (Start > 1 or V.IOAtStart or CanTunnel(CM, Cells[1]))) then
-            return nil
+        if Exit > N then return nil end
+        local Prev = Crossings[#Crossings]
+        if Prev and Exit - Prev.Entry <= MaxLength and Straight(Prev.Exit, Exit, Prev.Dir) then
+            Prev.Exit = Exit
+        else
+            -- The start cell is the previous exit, or the path start (may be a belt to continue or
+            -- a module IO cell)
+            if Entry < Start
+                or (Entry == Start and (Start > 1 or V.IOAtStart or CanTunnel(CM, Cells[1]))) then
+                return nil
+            end
+            local Dir = Direction(Cells[Entry], Cells[Entry + 1])
+            if not Straight(Entry, Exit, Dir) or Exit - Entry > MaxLength then return nil end
+            Crossings[#Crossings + 1] = { Entry = Entry, Exit = Exit, Dir = Dir }
         end
-        local Dir = Direction(Cells[Entry], Cells[Entry + 1])
-        for i = Entry + 1, Exit do
-            if Direction(Cells[i - 1], Cells[i]) ~= Dir then return nil end
-        end
-        if Exit - Entry > MaxLength then return nil end
-        Crossings[#Crossings + 1] = { Entry = Entry, Exit = Exit, Dir = Dir }
-        for i = Blocked, Last do Tunneled[i] = true end
 
         Start = Exit
         if Start == N then break end
         Blocked = SubPathFailure(CM, Geo, Cells, Start)
         if Blocked == false then return nil end
+    end
+    local Tunneled = {}
+    for _, X in ipairs(Crossings) do
+        for i = X.Entry + 1, X.Exit - 1 do Tunneled[i] = true end
     end
     return { CM = CM, Geo = Geo, Cells = Cells, Crossings = Crossings, Tunneled = Tunneled, Visual = V }
 end
