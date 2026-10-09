@@ -8,6 +8,14 @@ local Icons = require("icons")
 
 local RefreshSeconds = 2
 
+local Ok, Config = pcall(require, "config")
+if not Ok or type(Config) ~= "table" then
+    print("[RegolithIcons] config.lua failed to load, using defaults: " .. tostring(Config) .. "\n")
+    Config = {}
+end
+local ToggleKey = Config.ToggleKey or "I"
+Icons.SetShown(Config.ShowAtStart ~= false)
+
 -- Every module constructed (save load, building) is queued; Icons.Refresh picks the regolith ones.
 NotifyOnNewObject("/Script/TheCrust.ModuleBase", Icons.OnNewModule)
 
@@ -31,12 +39,39 @@ local TickHookPath = "/Game/Blueprints/Core/GodPawn.GodPawn_C:ArmLenght"
 local TickHooked = false
 local NextRefresh = 0
 
-local function OnFrame()
+-- Hotkeys fire on the UE4SS input thread: only flag them, the game-thread tick runs them.
+local TogglePressed = false
+if Key[ToggleKey] then
+    RegisterKeyBind(Key[ToggleKey], function() TogglePressed = true end)
+else
+    print("[RegolithIcons] Unknown ToggleKey " .. tostring(ToggleKey) .. ", no toggle key\n")
+end
+
+local ModifierKeys = { "LeftControl", "RightControl", "LeftShift", "RightShift", "LeftAlt", "RightAlt" }
+
+-- UE4SS also fires a binding when modifiers are held: Ctrl+I and the like must not toggle.
+local function NoModifierHeld(PC)
+    for _, Name in ipairs(ModifierKeys) do
+        if PC:IsInputKeyDown({ KeyName = FName(Name) }) then return false end
+    end
+    return true
+end
+
+local function HandleToggle(Pawn)
+    if not TogglePressed then return end
+    TogglePressed = false
+    local PC = Valid(Pawn) and Pawn:GetController()
+    if Valid(PC) and NoModifierHeld(PC) then Icons.SetShown(not Icons.IsShown()) end
+end
+
+local function OnFrame(Context)
+    local Ok, Err = pcall(HandleToggle, Context:get())
+    if not Ok then print("[RegolithIcons] Toggle failed: " .. tostring(Err) .. "\n") end
     local Now = os.clock()
     if Now < NextRefresh then return end
     NextRefresh = Now + RefreshSeconds
     if IsLoading() then return end
-    local Ok, Err = pcall(Icons.Refresh)
+    Ok, Err = pcall(Icons.Refresh)
     if not Ok then print("[RegolithIcons] Refresh failed: " .. tostring(Err) .. "\n") end
 end
 

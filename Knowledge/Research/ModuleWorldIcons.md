@@ -24,6 +24,7 @@ Draw a resource icon over modules in the world (RegolithIcons: dominant oxide ov
 - Storage agencies: extractor `SAO_Regolith`, Multi refinery `SAI_Regolith`, Single refinery `SAI_Regolith_or_Slag`, `MB_BigBulkStorage_C` / `MB_VeryBigBulkStorage_C` `SA_Bulk`. `MB_BulkStorage_C` has no instances (unused class).
 - `FindAllOf` returns main menu level sequence copies (`/Game/Movies/LevelSequencers/...:MovieScene_0.*`, no `SA_Bulk`): keep only names containing `:PersistentLevel.`. Planning ghosts: `bPlanningModeCPP = true`.
 - `FindAllOf` for 5 module classes costs ~220 ms (large base): never poll it. `NotifyOnNewObject("/Script/TheCrust.ModuleBase", cb)` catches every module (inheritance) at construction; queue there and initialize ~2 s later.
+- Show / hide all icons: `WidgetComponent:SetVisibility(bool, true)` per icon, verified in game 2026-10-09. Toggle key via `RegisterKeyBind` (UE4SS input thread: only flag it, act in the game-thread tick) + `PC:IsInputKeyDown` on the 6 modifier keys to ignore Ctrl/Shift/Alt combos.
 - Icon colors match the refinery panel: titanium white, iron orange-red, silicon purple, aluminium teal, slag blue.
 
 ## Pitfalls & Dead Ends

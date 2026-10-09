@@ -127,7 +127,8 @@ Full documentation: [Mods/AutoUnderground/README.md](Mods/AutoUnderground/README
 ### RegolithIcons
 An icon over each regolith extractor, refinery and bulk storage shows the dominant oxide of its regolith
 (titanium, iron, silicon or aluminium; slag ignored), or the regolith icon when the regolith is a blend of
-several deposits. Lines fed by different deposits are easy to keep apart. Nothing is written to the save.
+several deposits. Lines fed by different deposits are easy to keep apart. `I` shows / hides the icons
+(`Scripts\config.lua`: `ToggleKey`, `ShowAtStart`). Nothing is written to the save.
 
 Full documentation: [Mods/RegolithIcons/README.md](Mods/RegolithIcons/README.md).
 

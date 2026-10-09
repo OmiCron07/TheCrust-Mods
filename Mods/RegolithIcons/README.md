@@ -21,6 +21,14 @@ The icon is the game's own `W_ProductionIndicator` widget, shown in screen space
 module. Compositions are re-read every 2 seconds; new modules get their icon once built (planning ghosts
 get none). Nothing is written to the save.
 
+## Configuration (`Scripts/config.lua`)
+- `ToggleKey` (UE4SS key name, default: `"I"`): shows / hides all the icons. Fires only with no
+  Ctrl/Shift/Alt held. The game binds every letter except I, K and O (K is used by the Blueprints mod).
+- `ShowAtStart` (boolean, default: `true`): icons visible when the game starts. The toggle state is not
+  saved.
+
+Restart the game after editing the config.
+
 ## Installation
 Download `TheCrust-RegolithIcons.zip` from the latest GitHub release and extract it into the game root
 folder (the one containing `TheCrust`).

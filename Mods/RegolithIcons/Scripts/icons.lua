@@ -24,6 +24,7 @@ local MixedRatio = 2
 local WidgetClassPath = "/Game/Widgets/W_ProductionIndicator.W_ProductionIndicator_C"
 
 local Entries = {} -- module address -> { Actor, Comp, Res }
+local Shown = true -- toggle key state
 local Pending = {} -- modules constructed since the last refresh (not initialized yet)
 local Settling = {} -- modules queued one refresh ago: initialized by now
 
@@ -113,7 +114,19 @@ local function Update(Actor, Field)
         if not Valid(Widget) then E.Res = nil return end
         Widget["Set Resource Icon"](Widget, Res)
     end
-    E.Comp:SetVisibility(Res ~= nil, true)
+    E.Comp:SetVisibility(Shown and Res ~= nil, true)
+end
+
+function Icons.SetShown(Value)
+    Shown = Value
+    for _, E in pairs(Entries) do
+        -- Res false: icon not evaluated yet, Update sets its visibility.
+        if E.Res ~= false and Valid(E.Comp) then E.Comp:SetVisibility(Shown and E.Res ~= nil, true) end
+    end
+end
+
+function Icons.IsShown()
+    return Shown
 end
 
 -- NotifyOnNewObject callback: may run during loading, before the actor is initialized; only queue.
