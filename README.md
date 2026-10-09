@@ -11,6 +11,7 @@ used to build them.
 |-----|--------------|----------|
 | [Blueprints](#blueprints) | Copy, move or delete areas of your base and save them as reusable blueprints | [TheCrust-Blueprints.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-Blueprints.zip) |
 | [ZoomToCursor](#zoomtocursor) | Mouse wheel zooms toward the cursor instead of the screen center | [TheCrust-ZoomToCursor.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-ZoomToCursor.zip) |
+| [CheaperBelts](#cheaperbelts) | Belts and belt upgrades cost half the credits (configurable) | [TheCrust-CheaperBelts.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-CheaperBelts.zip) |
 | [SkipIntro](#skipintro) | Skips the startup logo videos (story cinematics kept), no UE4SS needed | [TheCrust-SkipIntro.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-SkipIntro.zip) |
 | All mods | All the mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
 
@@ -97,6 +98,13 @@ instead of the screen center.
   `UndergroundMaxZoom`, `ClampToMapBounds`, `DebugLogging`.
 
 Full documentation: [Mods/ZoomToCursor/README.md](Mods/ZoomToCursor/README.md).
+
+### CheaperBelts
+Belts, distributors and underground belts cost half the credits to build, and belt tier upgrades half
+the credits too. Both multipliers are in `Scripts\config.lua`: `BuildCostMultiplier`,
+`UpgradeCostMultiplier` (1.0 = vanilla, 0.0 = free). Nothing is written to the save.
+
+Full documentation: [Mods/CheaperBelts/README.md](Mods/CheaperBelts/README.md).
 
 ### SkipIntro
 Replaces the three startup videos (Unreal Engine logo, publisher and developer logos, title reveal) in
