@@ -97,7 +97,7 @@ end
 local function Text(Str, Size, Color)
     local T = Make("TextBlock")
     T:SetText(FText(Str))
-    SetFont(T, Size or 12)
+    SetFont(T, Size or 15)
     T:SetColorAndOpacity({ SpecifiedColor = Color or Colors.Text, ColorUseRule = 0 })
     return T
 end
@@ -117,7 +117,7 @@ local function Button(Label, Action, Arg, Tint, Confirm)
         Style.NormalPadding = { Left = 10, Top = 3, Right = 10, Bottom = 3 }
         Style.PressedPadding = { Left = 10, Top = 4, Right = 10, Bottom = 2 }
     end)
-    local T = Text(Label, 12)
+    local T = Text(Label, 15)
     B:SetContent(T)
     Buttons[#Buttons + 1] = { Widget = B, Action = Action, Arg = Arg, Label = T, Text = Label, Confirm = Confirm }
     return B, T
@@ -134,7 +134,7 @@ end
 
 -- Section title with a thin separator line under it, like the vanilla panels.
 local function Section(Parent, Title)
-    Pad(Parent:AddChildToVerticalBox(Text(Title, 13, Colors.Title)), 0, 10, 0, 2)
+    Pad(Parent:AddChildToVerticalBox(Text(Title, 16, Colors.Title)), 0, 10, 0, 2)
     local Line = Make("Image")
     StyleBrush(Line.Brush, nil, Colors.Line, 0)
     local Size = Make("SizeBox")
@@ -199,8 +199,8 @@ function UI.Create(PC, Position, KeyHelp)
     local V = Make("VerticalBox")
     Content:SetContent(V)
 
-    Pad(V:AddChildToVerticalBox(Text("BLUEPRINTS", 20, Colors.Title)), 0, 0, 0, 2)
-    StatusText = Text("Ready", 11, Colors.Dim)
+    Pad(V:AddChildToVerticalBox(Text("BLUEPRINTS", 24, Colors.Title)), 0, 0, 0, 2)
+    StatusText = Text("Ready", 14, Colors.Dim)
     Pad(V:AddChildToVerticalBox(StatusText), 0, 2)
 
     Section(V, "SELECTION")
@@ -219,35 +219,37 @@ function UI.Create(PC, Position, KeyHelp)
         (Button("Cut", "Cut")),
         (Button("Delete", "DeleteSelection", nil, Colors.Red, true)),
     })
-    SelectionText = Text("No selection", 11, Colors.Dim)
+    SelectionText = Text("No selection", 14, Colors.Dim)
     Pad(V:AddChildToVerticalBox(SelectionText), 0, 4)
 
     NameBox = Make("EditableTextBox")
     pcall(function() NameBox:SetHintText(FText("Blueprint name")) end)
+    pcall(function() NameBox.WidgetStyle.Font.Size = 15 end)
     local NameSize = Make("SizeBox")
-    NameSize:SetWidthOverride(230)
+    NameSize:SetWidthOverride(290)
     NameSize:SetContent(NameBox)
     HRow(V, { NameSize, (Button("Save selection", "SaveSelection", nil, Colors.Green)) })
 
     Section(V, "LIBRARY")
     for i = 1, RowsPerPage do
         local Place = Button("Place", "Place", i, Colors.Green)
+        local Replace = Button("Replace", "Replace", i, nil, true)
         local Rename = Button("Rename", "Rename", i)
         local Delete, DeleteLabel = Button("Delete", "Delete", i, Colors.Red)
-        local Label = Text("", 12)
-        local Box = HRow(V, { Place, Rename, Delete, Label }, 2)
+        local Label = Text("", 15)
+        local Box = HRow(V, { Place, Replace, Rename, Delete, Label }, 2)
         Rows[i] = { Box = Box, Label = Label, DeleteLabel = DeleteLabel }
     end
-    PageText = Text("", 11, Colors.Dim)
+    PageText = Text("", 14, Colors.Dim)
     HRow(V, { (Button("<", "PrevPage")), (Button(">", "NextPage")), PageText }, 4)
 
     Section(V, "KEYBINDS")
     for _, Help in ipairs(KeyHelp or {}) do
-        local KeyText = Text(Help[1], 12, Colors.Key)
+        local KeyText = Text(Help[1], 15, Colors.Key)
         local KeySize = Make("SizeBox")
-        KeySize:SetWidthOverride(120)
+        KeySize:SetWidthOverride(150)
         KeySize:SetContent(KeyText)
-        HRow(V, { KeySize, Text(Help[2], 12, Colors.Text) }, 0)
+        HRow(V, { KeySize, Text(Help[2], 15, Colors.Text) }, 0)
     end
 
     Panel:SetOwningPlayer(PC)

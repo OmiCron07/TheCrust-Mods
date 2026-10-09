@@ -45,7 +45,9 @@ kept cells.
 2. Type a name in the name box ⑧ and click **Save selection** (an empty name gives `Blueprint N`).
    The blueprint appears at the top of the **Library**.
 3. Later, click **Place** ⑨ next to it to paste it, exactly like a copy.
-4. To rename: type the new name in the name box, then click **Rename** ⑩. To delete: click
+4. To update it: select the new area, then click **Replace** next to it, then **Confirm?** on the
+   same button. It keeps its name and place in the library.
+5. To rename: type the new name in the name box, then click **Rename** ⑩. To delete: click
    **Delete** ⑪, then **Confirm?** on the same button.
 
 ### Build the ghosts
@@ -79,6 +81,7 @@ lack of credits. The game has no downgrade.
 | 7 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
 | 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
 | 9 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
+| | Replace | | Overwrites that blueprint with the current selection, keeping its name (button right of **Place**); the first click turns the button into **Confirm?**. |
 | 10 | Rename | | Renames that blueprint with the text of the name box. |
 | 11 | Delete | | Deletes that blueprint; the first click turns the button into **Confirm?**. |
 | 12 | Pages | | 8 blueprints per page, newest first. |

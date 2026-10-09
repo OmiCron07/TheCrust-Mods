@@ -237,6 +237,17 @@ local function HandleAction(PC, Action, Index)
     elseif Action == "Place" then
         local BP = State.Library[Index]
         if BP then StartPaste(PC, BP, "'" .. BP.Name .. "'") end
+    elseif Action == "Replace" then
+        local Old = State.Library[Index]
+        if not Old then return end
+        if not HasSelection() then Notify("Select an area first, then click Replace") return end
+        -- Shallow copy: the capture may already be saved under another name.
+        local BP = {}
+        for K, V in pairs(State.Captured) do BP[K] = V end
+        BP.Name, BP.Created, BP.Summary = Old.Name, os.date("%Y-%m-%d %H:%M"), Capture.Summary(BP)
+        State.Library[Index] = BP
+        SaveLibrary()
+        Notify("Replaced '" .. BP.Name .. "' with the selection")
     elseif Action == "Rename" then
         local BP, Name = State.Library[Index], UI.GetName()
         if BP and Name ~= "" then
