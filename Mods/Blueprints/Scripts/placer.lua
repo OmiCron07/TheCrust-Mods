@@ -317,7 +317,10 @@ end
 -- the holo sections to the built grid). Every other holo section is deferred meanwhile so only ours
 -- are built. BuildSection alone only flags the holo section as built without moving it, which draws
 -- a built belt and a holo belt on top of each other.
-function Placer.BuildBelts(CM, Cells, Report)
+-- While the PC planning mode is on, BuildAllSectionsWithMoney takes another branch: no payment,
+-- BuildAllConveyors builds nothing, then ToggleDefferedMode undefers every holo section (all planning
+-- ghosts turn into blue holos). Planning mode is switched off around the call to get the paid branch.
+function Placer.BuildBelts(PC, CM, Cells, Report)
     local Targets, Count = {}, 0
     for _, Cell in ipairs(Cells) do
         local S = CM.HoloSectionGrid:GetSectionAtCellID_Safe(Cell)
@@ -345,7 +348,10 @@ function Placer.BuildBelts(CM, Cells, Report)
 
     CM:UpdateHoloSectionCosts()
     local Out = {}
+    local PrevPlanning = PC.bIsPlanningModeActive
+    PC.bIsPlanningModeActive = false
     local Ok, Err = pcall(function() CM:BuildAllSectionsWithMoney(Out) end)
+    PC.bIsPlanningModeActive = PrevPlanning
     local Built = Ok and Out.IsSuccess == true
 
     for _, S in ipairs(Deferred) do
@@ -394,7 +400,7 @@ function Placer.BuildArea(PC, Layer, R0, C0, R1, C1)
     for R = R0, R1 do
         for C = C0, C1 do Cells[#Cells + 1] = Grid.ToCell(R, C) end
     end
-    local Ok, Err = pcall(Placer.BuildBelts, CM, Cells, Report)
+    local Ok, Err = pcall(Placer.BuildBelts, PC, CM, Cells, Report)
     if not Ok then Report.Errors[#Report.Errors + 1] = "belts: " .. tostring(Err) end
     return Report
 end
@@ -655,7 +661,7 @@ function Placer.Paste(PC, Layer, BP, OriginCell, Turns, Options)
             local Ok, Done = pcall(Placer.BuildPlanned, M)
             if Ok and Done then Report.Built = Report.Built + 1 else Report.NotBuilt = Report.NotBuilt + 1 end
         end
-        local Ok, Err = pcall(Placer.BuildBelts, CM, Report.BeltCells, Report)
+        local Ok, Err = pcall(Placer.BuildBelts, PC, CM, Report.BeltCells, Report)
         if not Ok then Report.Errors[#Report.Errors + 1] = "build belts: " .. tostring(Err) end
     end
     -- Settings last: belt connections and construction (holo sections moved to the built grid)
