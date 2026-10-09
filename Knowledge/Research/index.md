@@ -6,6 +6,7 @@ Directory: `Research/`
 
 | Title | Type | Description |
 |-------|------|-------------|
+| [Belt Drag Tool & Auto Underground](BeltDragAndAutoUnderground.md) | Research | How the vanilla belt drag tool previews and builds a path, how to redraw its ... |
 | [Building System, Ghost Placement & Blueprint Modding](BuildingSystemAndBlueprints.md) | Research | How modules, conveyors and electric wires are placed (incl. planning-mode gho... |
 | [Camera System & Zoom to Cursor Modding](CameraSystemAndZoomModding.md) | Research | Architecture of The Crust's GodPawn camera system, zoom mechanics, and mathem... |
 | [Conveyor Build & Upgrade Costs](ConveyorCosts.md) | Research | Where belt, distributor, underground belt and tier upgrade prices live at run... |

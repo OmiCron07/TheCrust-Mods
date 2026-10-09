@@ -13,6 +13,7 @@ used to build them.
 | [ZoomToCursor](#zoomtocursor) | Mouse wheel zooms toward the cursor instead of the screen center | [TheCrust-ZoomToCursor.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-ZoomToCursor.zip) |
 | [CheaperBelts](#cheaperbelts) | Belts and belt upgrades cost half the credits (configurable) | [TheCrust-CheaperBelts.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-CheaperBelts.zip) |
 | [BiggerMiningBrush](#biggerminingbrush) | Mining zone brush goes up to x10 instead of x3 (configurable) | [TheCrust-BiggerMiningBrush.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-BiggerMiningBrush.zip) |
+| [AutoUnderground](#autounderground) | Belts dragged across other belts go under them with underground belts | [TheCrust-AutoUnderground.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AutoUnderground.zip) |
 | [SkipIntro](#skipintro) | Skips the startup logo videos (story cinematics kept), no UE4SS needed | [TheCrust-SkipIntro.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-SkipIntro.zip) |
 | All mods | All the mods above in one zip | [TheCrust-AllMods.zip](https://github.com/OmiCron07/TheCrust-Mods/releases/latest/download/TheCrust-AllMods.zip) |
 
@@ -113,6 +114,14 @@ still adds 1 per click (x1 to x10, then back to x1), with the vanilla round brus
 `Scripts\config.lua`: `MaxBrushSize`.
 
 Full documentation: [Mods/BiggerMiningBrush/README.md](Mods/BiggerMiningBrush/README.md).
+
+### AutoUnderground
+Drag a belt across existing belts and it goes under them: each crossing becomes an underground belt pair
+(entry and exit on the free cells around the crossed belts, up to 8 cells apart) instead of the vanilla
+red path that builds nothing. The preview shows the full path in blue. Paths blocked by modules or rock
+keep the vanilla behavior.
+
+Full documentation: [Mods/AutoUnderground/README.md](Mods/AutoUnderground/README.md).
 
 ### SkipIntro
 Replaces the three startup videos (Unreal Engine logo, publisher and developer logos, title reveal) in
