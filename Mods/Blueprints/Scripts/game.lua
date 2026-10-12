@@ -84,8 +84,9 @@ function Game.ConveyorManager(PC, Layer)
 end
 
 function Game.CursorCell(PC)
+    -- Same table for every out param: newer UE4SS builds write each one into its own table.
     local Out = {}
-    PC:GetCellUnderCursor(11, false, Out, {}, {})
+    PC:GetCellUnderCursor(11, false, Out, Out, Out)
     if Out.Success and Out["Out SmallIndex"] and Out["Out SmallIndex"] >= 0 then
         return Out["Out SmallIndex"]
     end

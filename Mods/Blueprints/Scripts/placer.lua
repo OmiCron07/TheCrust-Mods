@@ -143,7 +143,7 @@ local function PlaceLink(EM, A, B)
     local Link = {}
     for _, Field in pairs(LinkFields) do Link[Field] = Current[Field] end
     local Out = {}
-    EM["Add Link"](EM, Link, false, Out, {})
+    EM["Add Link"](EM, Link, false, Out, Out)
     local Id = Out["Added Link Id"]
     if not Id or Id < 0 then
         EM:ClearCurrentLinkInfo()
