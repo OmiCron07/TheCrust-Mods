@@ -8,14 +8,16 @@ storages, so lines fed by different deposits are easy to tell apart and not mixe
 |------|---------|
 | Oxide icon (titanium, iron, silicon, aluminium) | That oxide is at least twice the next one in the regolith |
 | Regolith icon | Blend: no oxide stands out (regolith from several deposits was mixed) |
-| No icon | The module never held regolith, or the bulk storage is set to another resource |
+| Resource icon (bulk storage set to another resource, Single refinery on slag) | The resource the storage takes |
+| No icon | The module never held regolith |
 
 Slag is ignored: it is in every deposit and never tells two lines apart.
 
 ## How it works
 - Extractor: composition of its output storage (the deposit profile, `MineralField.ResourcePercentageForRegolithExtractor`).
 - Refinery: composition of its regolith input storage.
-- Bulk storage: composition of the stored regolith (the game blends what comes in, amount-weighted).
+- Bulk storage: composition of the stored regolith (the game blends what comes in, amount-weighted); set to
+  another resource, the icon of that resource (its "Resource type").
 
 The icon is the game's own `W_ProductionIndicator` widget, shown in screen space over the top of the
 module, only for modules on the layer being viewed (underground or surface). Compositions are re-read

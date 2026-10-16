@@ -1,4 +1,4 @@
--- Dominant oxide icon over regolith modules (extractors, refineries, bulk storages).
+-- Icon over regolith modules (dominant oxide) and bulk storages (stored resource).
 -- Each module gets its own screen-space WidgetComponent with the vanilla W_ProductionIndicator
 -- (the module's ProductionOutputIndicator is driven by vanilla on hover, so it is left alone).
 
@@ -43,15 +43,16 @@ local function Valid(Obj)
         and not Obj:HasAnyInternalFlags(EInternalObjectFlags.PendingKill)
 end
 
--- Oxide with the largest fraction; Regolith when no oxide stands out (blend of several deposits);
--- nil when the storage does not take regolith or never held any.
+-- Regolith storage: oxide with the largest fraction, Regolith when no oxide stands out (blend of
+-- several deposits), nil when it never held any. Other storages (bulk storage set to another
+-- resource, single refinery on slag): the resource it takes, from MaxResourceLimit.
 function Icons.Dominant(Storage)
     if not Valid(Storage) then return nil end
-    local Capacity = 0
+    local Resource
     Storage.MaxResourceLimit:ForEach(function(K, V)
-        if K:get() == Regolith then Capacity = V:get() end
+        if V:get() > 0 then Resource = K:get() end
     end)
-    if Capacity <= 0 then return nil end -- e.g. bulk storage switched to another resource
+    if Resource ~= Regolith then return Resource end
     local Fractions = {}
     Storage.CurrentResourceRegolithPercentage:ForEach(function(K, V) Fractions[K:get()] = V:get() end)
     return Icons.Pick(Fractions)
