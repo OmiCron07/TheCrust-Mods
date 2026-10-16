@@ -25,6 +25,9 @@ local WidgetClassPath = "/Game/Widgets/W_ProductionIndicator.W_ProductionIndicat
 
 local Entries = {} -- module address -> { Actor, Comp, Res }
 local Shown = true -- toggle key state
+local Layer = nil -- current game layer (GodPlayer_PC.CurrentGameLayer: 0 Underground, 2 Crater); nil: unknown
+-- Grid pivot Z: underground 0, crater 6001. Modules above this Z are on the crater layer.
+local CraterMinZ = 3000
 local Pending = {} -- modules constructed since the last refresh (not initialized yet)
 local Settling = {} -- modules queued one refresh ago: initialized by now
 
@@ -97,12 +100,18 @@ local function NewIcon(Actor)
     return Comp
 end
 
+-- Icons are screen space: drawn even when their module's layer is not the one viewed.
+local function Visible(E)
+    return Shown and E.Res ~= nil and (Layer == nil or E.Layer == Layer)
+end
+
 local function Update(Actor, Field)
     local E = Entries[Key(Actor)]
     if not (E and Valid(E.Comp)) then
         local Comp = NewIcon(Actor)
         if not Comp then return end
-        E = { Actor = Actor, Comp = Comp, Res = false } -- false: visibility not set yet
+        local ModuleLayer = Actor:K2_GetActorLocation().Z > CraterMinZ and 2 or 0
+        E = { Actor = Actor, Comp = Comp, Res = false, Layer = ModuleLayer } -- Res false: visibility not set yet
         Entries[Key(Actor)] = E
     end
     -- Planning ghosts get no icon (they show one once built).
@@ -114,15 +123,26 @@ local function Update(Actor, Field)
         if not Valid(Widget) then E.Res = nil return end
         Widget["Set Resource Icon"](Widget, Res)
     end
-    E.Comp:SetVisibility(Shown and Res ~= nil, true)
+    E.Comp:SetVisibility(Visible(E), true)
+end
+
+local function ApplyVisibility()
+    for _, E in pairs(Entries) do
+        -- Res false: icon not evaluated yet, Update sets its visibility.
+        if E.Res ~= false and Valid(E.Comp) then E.Comp:SetVisibility(Visible(E), true) end
+    end
 end
 
 function Icons.SetShown(Value)
     Shown = Value
-    for _, E in pairs(Entries) do
-        -- Res false: icon not evaluated yet, Update sets its visibility.
-        if E.Res ~= false and Valid(E.Comp) then E.Comp:SetVisibility(Shown and E.Res ~= nil, true) end
-    end
+    ApplyVisibility()
+end
+
+-- Called every frame: only acts when the viewed layer changes.
+function Icons.SetLayer(Value)
+    if Value == Layer then return end
+    Layer = Value
+    ApplyVisibility()
 end
 
 function Icons.IsShown()

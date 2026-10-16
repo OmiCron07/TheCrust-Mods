@@ -18,8 +18,8 @@ Slag is ignored: it is in every deposit and never tells two lines apart.
 - Bulk storage: composition of the stored regolith (the game blends what comes in, amount-weighted).
 
 The icon is the game's own `W_ProductionIndicator` widget, shown in screen space over the top of the
-module. Compositions are re-read every 2 seconds; new modules get their icon once built (planning ghosts
-get none). Nothing is written to the save.
+module, only for modules on the layer being viewed (underground or surface). Compositions are re-read
+every 2 seconds; new modules get their icon once built (planning ghosts get none). Nothing is written to the save.
 
 ## Configuration (`Scripts/config.lua`)
 - `ToggleKey` (UE4SS key name, default: `"I"`): shows / hides all the icons. Fires only with no

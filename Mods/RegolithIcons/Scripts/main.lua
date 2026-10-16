@@ -57,16 +57,18 @@ local function NoModifierHeld(PC)
     return true
 end
 
-local function HandleToggle(Pawn)
+local function HandleInput(Pawn)
+    local PC = Valid(Pawn) and Pawn:GetController()
+    if not Valid(PC) then return end
+    Icons.SetLayer(PC.CurrentGameLayer)
     if not TogglePressed then return end
     TogglePressed = false
-    local PC = Valid(Pawn) and Pawn:GetController()
-    if Valid(PC) and NoModifierHeld(PC) then Icons.SetShown(not Icons.IsShown()) end
+    if NoModifierHeld(PC) then Icons.SetShown(not Icons.IsShown()) end
 end
 
 local function OnFrame(Context)
-    local Ok, Err = pcall(HandleToggle, Context:get())
-    if not Ok then print("[RegolithIcons] Toggle failed: " .. tostring(Err) .. "\n") end
+    local Ok, Err = pcall(HandleInput, Context:get())
+    if not Ok then print("[RegolithIcons] Input failed: " .. tostring(Err) .. "\n") end
     local Now = os.clock()
     if Now < NextRefresh then return end
     NextRefresh = Now + RefreshSeconds
