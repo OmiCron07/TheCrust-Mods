@@ -142,14 +142,17 @@ function Game.ModuleCells(Module)
 end
 
 -- Settled, non-dismantled player modules of the given layer.
+-- The layer comes from the module's conveyor manager: the module's own bOnSurface only turns true
+-- once a crater module is built (planned and under construction ones keep false).
 function Game.LayerModules(Layer)
     local Result = {}
     local OnSurface = (Layer == Game.LayerCrater)
     for _, M in ipairs(FindAllOf("ModuleBase_BP_C") or {}) do
         if Game.Valid(M) then
             local Name = M:GetFullName()
+            local CM = M.ConveyorManager
             if Name:find("PersistentLevel", 1, true) and not Name:find("Default__", 1, true)
-                and M.bOnSurface == OnSurface
+                and Game.Valid(CM) and CM.bOnSurface == OnSurface
                 and not ExcludedStates[M.BuildingStateCPP] then
                 Result[#Result + 1] = M
             end
