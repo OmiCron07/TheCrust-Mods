@@ -25,6 +25,7 @@ Provide navigational map of TheCrust modding directories and component boundarie
   - `Scripts/Get-GameScreenshot.ps1`: GPU-safe game window capture into `Captures/` (gitignored).
   - `Scripts/Invoke-WinDrive.ps1`: Guarded mouse/keyboard batches to the game window (see `Playbooks/LiveVerification.md`).
 - `Mods/`: Staging directory for developing custom mods (Pak mods, Lua scripts).
+- `Docs/Plans/`: Implementation plans for upcoming mods / features (handoff between agents).
 - `Knowledge/`: Self-improving OKF knowledge base.
 - `AGENTS.md`: Root micro-router for agent orientation.
 

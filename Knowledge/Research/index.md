@@ -14,6 +14,7 @@ Directory: `Research/`
 | [Initial Project Setup & Baseline Verification](InitialSetup.md) | Research | Initial bootstrap state and verified prerequisites. |
 | [Intro Cinematics and Movie Playback Architecture](IntroCinematicsAndMovies.md) | Research | Reverse engineering of startup logos, narrative cutscenes, and WmfMedia playb... |
 | [Mining Zone Brush (Dig Zones Queue Ruler)](MiningZoneBrush.md) | Research | How the mining zone brush size cycles, which native calls build and paint bru... |
+| [Module Production States (Producing / Starved / Blocked)](ProductionStates.md) | Research | Where a production module's live state lives and which native checks tell sta... |
 | [Regolith Composition Mixing & Refinery Output](RegolithComposition.md) | Research | How regolith carries an oxide composition map, how storages blend it, and how... |
 | [Storage Belt Ports (IO Cells) & Multi-Storage Pooling](StorageBeltIO.md) | Research | How storage conveyor ports move resources between a storage and its belts, an... |
 | [UE4SS Lua Out Parameter Tables Across Builds](UE4SSOutParams.md) | Research | Non-struct out params of a UFunction called from Lua land in different tables... |
