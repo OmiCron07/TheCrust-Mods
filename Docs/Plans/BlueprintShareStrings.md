@@ -1,6 +1,6 @@
 # Plan: Blueprint share strings (export / import in `Mods/Blueprints/`)
 
-Status: planned, not started. The blueprint library is already global (`library.lua` in the mod folder, not per save); this adds sharing between players through a copy-pasteable string.
+Status: implemented (`share.lua`, `deflate.lua`, selftest green, deployed 2026-10-19); pending: step 0 in-game probe, step 7 live verify, release. The blueprint library is already global (`library.lua` in the mod folder, not per save); this adds sharing between players through a copy-pasteable string.
 
 ## Goal (v1)
 - **Share** on a library row puts a `TCBP1:...` string on the Windows clipboard.
@@ -28,7 +28,7 @@ Conclusions:
 - Verified on the data: module `Cells` relative to (`DR`, `DC`) are identical for every module with the same (`Class`, `Turns`, `Mirrored`) (12 keys, 0 conflicts).
 - Verified: in belt paths the next cell is the step of the current cell's `dir` for 685 / 688 pairs; the 3 others are corner cells whose `dir` differs from the move. The encoding must keep both.
 
-Measurement scripts were throwaway (Python, session scratchpad); re-measure in `selftest.lua` (step 6).
+Measurement scripts were throwaway (Python, session scratchpad). Actual `TCBP1` sizes of the implementation (greedy LZ77, `BLUEPRINTS_LIBRARY` selftest run): 253 / 306 / 724 / 800 / 1101 / 1458 / 2580 chars, about 10 % above the zlib estimate.
 
 ## Format `TCBP1`
 `TCBP1:` + base64url (RFC 4648 `A-Z a-z 0-9 - _`, no padding) of raw DEFLATE (RFC 1951) of a minified Lua literal payload. The prefix versions the format. base64url has no `+ / =`, so the string survives URLs and file names; `_` can still trigger Discord italics, so the README tells users to paste it in a code block.

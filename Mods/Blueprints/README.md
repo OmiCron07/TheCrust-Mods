@@ -50,6 +50,18 @@ kept cells.
 5. To rename: type the new name in the name box, then click **Rename** ⑩. To delete: click
    **Delete** ⑪, then **Confirm?** on the same button.
 
+### Share a blueprint with other players
+- **Share** (library row, left of **Delete**) copies a share string of that blueprint to the Windows
+  clipboard: text starting with `TCBP1:`, usually 300 to 2500 characters. Paste it in Discord, Reddit,
+  a text file... In Discord, wrap it in a code block (three backticks) so it stays intact; Discord
+  sends a string over 2000 characters as a `message.txt` file.
+- **Import** (right of **Save selection**) adds the blueprint of a share string to the top of the
+  library: copy the string anywhere, then click **Import**. You can also paste it in the name box
+  first. A name already in the library gets a ` (2)` suffix.
+- A share string only contains data, never code: Import checks every value and refuses damaged
+  strings and module types the game does not know (other game version or mod content), with the
+  reason in the status line.
+
 ### Build the ghosts
 - One by one: the vanilla play button of each planned module.
 - All at once: select the area of the ghosts, then click **Build selection** ⑥ (`Shift+K`). This
@@ -80,9 +92,11 @@ lack of credits. The game has no downgrade.
 | | Delete | `Delete` | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?** (the key deletes right away). |
 | 7 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
 | 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
+| | Import | | Adds the blueprint of a share string (name box, else Windows clipboard) to the library, see [Share a blueprint](#share-a-blueprint-with-other-players). |
 | 9 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
 | | Replace | | Overwrites that blueprint with the current selection, keeping its name (button right of **Place**); the first click turns the button into **Confirm?**. |
 | 10 | Rename | | Renames that blueprint with the text of the name box. |
+| | Share | | Copies a share string of that blueprint to the Windows clipboard (button right of **Rename**). |
 | 11 | Delete | | Deletes that blueprint; the first click turns the button into **Confirm?**. |
 | 12 | Pages | | 8 blueprints per page, newest first. |
 | 13 | Keybinds | | Reminder of the hotkeys, as configured in `Scripts/config.lua`. |
@@ -155,8 +169,8 @@ belts.
 - `PanelPosition`: panel offset from the top-right corner.
 - `DebugLogging`: log per-module paste errors to the UE4SS log.
 
-The library is stored in `library.lua` next to the `Scripts` folder. Back it up to keep or share
-your blueprints.
+The library is stored in `library.lua` next to the `Scripts` folder. Back it up to keep your
+blueprints; use **Share** / **Import** to exchange single blueprints.
 
 ## Installation
 Download `TheCrust-Blueprints.zip` from the latest GitHub release and extract it into the game root
@@ -165,5 +179,8 @@ but overwrites `Scripts/config.lua`.
 
 ## Development
 - Deploy from the repo: `.\Scripts\Deploy-Lua-Mod.ps1 -ModSourceDir "<repo>\Mods\Blueprints"`.
-- `Scripts/selftest.lua`: pure checks (grid math, belt decomposition, serialization), runnable with any Lua 5.4.
+- `Scripts/selftest.lua`: pure checks (grid math, belt decomposition, serialization, share strings:
+  DEFLATE vectors, round trips, hostile inputs), runnable with any Lua 5.4. Set `BLUEPRINTS_LIBRARY`
+  to a `library.lua` to also round-trip a real library and print share string sizes.
+- Share string format: header of `Scripts/share.lua`; plan and measurements: `Docs/Plans/BlueprintShareStrings.md`.
 - Research notes: `Knowledge/Research/BuildingSystemAndBlueprints.md`.
