@@ -21,6 +21,7 @@ local Preview = require("preview")
 local Visuals = require("visuals")
 local UI = require("ui")
 local Storage = require("storage")
+local Share = require("share")
 
 local ScriptPath = debug.getinfo(1, "S").source:gsub("^@", "")
 local ModDir = ScriptPath:gsub("[\\/]Scripts[\\/]main%.lua$", "")
@@ -258,6 +259,42 @@ local function HandleAction(PC, Action, Index)
         else
             Notify("Type the new name in the name box, then click Rename")
         end
+    elseif Action == "Share" then
+        local BP = State.Library[Index]
+        if not BP then return end
+        local Ok, Str = pcall(Share.Encode, BP)
+        if not Ok then Notify("Share failed: " .. tostring(Str)) return end
+        if Game.CopyToClipboard(Str) then
+            Notify(string.format("Share string of '%s' copied to the Windows clipboard (%d chars%s)", BP.Name, #Str,
+                #Str > 2000 and ", Discord sends it as a file" or ""))
+        else
+            UI.SetName(Str)
+            Notify("Windows clipboard unavailable: copy the share string from the name box (Ctrl+A, Ctrl+C)")
+        end
+    elseif Action == "Import" then
+        -- Name box first (manual paste), else the Windows clipboard.
+        local Text = UI.GetName()
+        if not Text:find("^TCBP") then Text = Game.PasteFromClipboard() or "" end
+        if not Text:find("^%s*TCBP") then Notify("Copy a " .. Share.Prefix .. " share string first") return end
+        local BP, Err = Share.Decode(Text)
+        if not BP then Notify("Import failed: " .. Err) return end
+        local Unknown, Seen = {}, {}
+        for _, Mod in ipairs(BP.Modules) do
+            if not Seen[Mod.Class] then
+                Seen[Mod.Class] = true
+                if not Game.IsModuleClass(Mod.Class) then Unknown[#Unknown + 1] = Mod.Class:match("([^%.]+)$") end
+            end
+        end
+        if #Unknown > 0 then Notify("Import failed, unknown modules: " .. table.concat(Unknown, ", ")) return end
+        local Taken = {}
+        for _, Other in ipairs(State.Library) do Taken[Other.Name] = true end
+        local Name, N = BP.Name, 2
+        while Taken[Name] do Name, N = BP.Name .. " (" .. N .. ")", N + 1 end
+        BP.Name, BP.Created, BP.Summary, BP.Skipped = Name, os.date("%Y-%m-%d %H:%M"), Capture.Summary(BP), 0
+        table.insert(State.Library, 1, BP)
+        UI.SetName("")
+        SaveLibrary()
+        Notify("Imported '" .. Name .. "': " .. BP.Summary)
     elseif Action == "Delete" then
         local BP = table.remove(State.Library, Index)
         if BP then

@@ -228,16 +228,17 @@ function UI.Create(PC, Position, KeyHelp)
     local NameSize = Make("SizeBox")
     NameSize:SetWidthOverride(290)
     NameSize:SetContent(NameBox)
-    HRow(V, { NameSize, (Button("Save selection", "SaveSelection", nil, Colors.Green)) })
+    HRow(V, { NameSize, (Button("Save selection", "SaveSelection", nil, Colors.Green)), (Button("Import", "Import")) })
 
     Section(V, "LIBRARY")
     for i = 1, RowsPerPage do
         local Place = Button("Place", "Place", i, Colors.Green)
         local Replace = Button("Replace", "Replace", i, nil, true)
         local Rename = Button("Rename", "Rename", i)
+        local ShareButton = Button("Share", "Share", i)
         local Delete, DeleteLabel = Button("Delete", "Delete", i, Colors.Red)
         local Label = Text("", 15)
-        local Box = HRow(V, { Place, Replace, Rename, Delete, Label }, 2)
+        local Box = HRow(V, { Place, Replace, Rename, ShareButton, Delete, Label }, 2)
         Rows[i] = { Box = Box, Label = Label, DeleteLabel = DeleteLabel }
     end
     PageText = Text("", 14, Colors.Dim)

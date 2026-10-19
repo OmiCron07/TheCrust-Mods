@@ -135,6 +135,37 @@ function Game.LoadClass(Path)
     if Game.Valid(Cls) then return Cls end
 end
 
+-- True when Path loads as a module class (ModuleBase child); guards imported share strings.
+function Game.IsModuleClass(Path)
+    local Cls = Game.LoadClass(Path)
+    while Game.Valid(Cls) do
+        if Cls:GetFullName() == "Class /Script/TheCrust.ModuleBase" then return true end
+        Cls = Cls:GetSuperStruct()
+    end
+    return false
+end
+
+-- Windows clipboard through the game's own UUIFunctionLib (no external process).
+local function UILib()
+    local Lib = StaticFindObject("/Script/TheCrust.Default__UIFunctionLib")
+    return Game.Valid(Lib) and Lib or nil
+end
+
+function Game.CopyToClipboard(Str)
+    local Lib = UILib()
+    return Lib ~= nil and (pcall(function() Lib:CopyToClipboard(Str) end))
+end
+
+function Game.PasteFromClipboard()
+    local Lib = UILib()
+    if not Lib then return nil end
+    local Ok, Str = pcall(function()
+        local V = Lib:PasteFromClipboard()
+        return type(V) == "string" and V or V:ToString()
+    end)
+    return Ok and Str or nil
+end
+
 function Game.ModuleCells(Module)
     local Cells = {}
     Module.CellIndexesUnderModule:ForEach(function(_, V) Cells[#Cells + 1] = V:get() end)
