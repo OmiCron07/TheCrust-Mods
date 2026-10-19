@@ -11,7 +11,8 @@ local function IsArray(T)
 end
 
 -- Serializes plain data (tables, strings, numbers, booleans) to a Lua literal with stable key order.
-function Storage.Serialize(V, Indent)
+-- Compact = no whitespace outside strings (share strings).
+function Storage.Serialize(V, Indent, Compact)
     Indent = Indent or ""
     local T = type(V)
     if T == "string" then return string.format("%q", V) end
@@ -22,16 +23,17 @@ function Storage.Serialize(V, Indent)
     if T == "boolean" then return tostring(V) end
     if T ~= "table" then error("cannot serialize " .. T) end
 
-    local Inner = Indent .. "  "
+    local Inner = Compact and "" or Indent .. "  "
+    local NL = Compact and "" or "\n"
     local Parts = {}
     if IsArray(V) then
         -- Short arrays of scalars stay on one line to keep files compact and diffable.
         local Flat = true
         for _, X in ipairs(V) do if type(X) == "table" then Flat = false break end end
-        for _, X in ipairs(V) do Parts[#Parts + 1] = Storage.Serialize(X, Inner) end
-        if Flat then return "{" .. table.concat(Parts, ", ") .. "}" end
+        for _, X in ipairs(V) do Parts[#Parts + 1] = Storage.Serialize(X, Inner, Compact) end
+        if Flat then return "{" .. table.concat(Parts, Compact and "," or ", ") .. "}" end
         if #Parts == 0 then return "{}" end
-        return "{\n" .. Inner .. table.concat(Parts, ",\n" .. Inner) .. "\n" .. Indent .. "}"
+        return "{" .. NL .. Inner .. table.concat(Parts, "," .. NL .. Inner) .. NL .. Indent .. "}"
     end
 
     local Keys = {}
@@ -39,10 +41,10 @@ function Storage.Serialize(V, Indent)
     table.sort(Keys, function(A, B) return tostring(A) < tostring(B) end)
     for _, K in ipairs(Keys) do
         local KS = (type(K) == "string" and K:match("^[%a_][%w_]*$")) and K or ("[" .. Storage.Serialize(K) .. "]")
-        Parts[#Parts + 1] = KS .. " = " .. Storage.Serialize(V[K], Inner)
+        Parts[#Parts + 1] = KS .. (Compact and "=" or " = ") .. Storage.Serialize(V[K], Inner, Compact)
     end
     if #Parts == 0 then return "{}" end
-    return "{\n" .. Inner .. table.concat(Parts, ",\n" .. Inner) .. "\n" .. Indent .. "}"
+    return "{" .. NL .. Inner .. table.concat(Parts, "," .. NL .. Inner) .. NL .. Indent .. "}"
 end
 
 function Storage.Deserialize(Text)

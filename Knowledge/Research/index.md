@@ -18,5 +18,6 @@ Directory: `Research/`
 | [Regolith Composition Mixing & Refinery Output](RegolithComposition.md) | Research | How regolith carries an oxide composition map, how storages blend it, and how... |
 | [Storage Belt Ports (IO Cells) & Multi-Storage Pooling](StorageBeltIO.md) | Research | How storage conveyor ports move resources between a storage and its belts, an... |
 | [UE4SS Lua Out Parameter Tables Across Builds](UE4SSOutParams.md) | Research | Non-struct out params of a UFunction called from Lua land in different tables... |
+| [Windows Clipboard Access from UE4SS Lua](GameClipboard.md) | Research | The game's UUIFunctionLib exposes CopyToClipboard / PasteFromClipboard, calla... |
 | [World Icons over Modules (Production Indicator Widget)](ModuleWorldIcons.md) | Research | How to show a resource icon over a module in the world from UE4SS Lua, and th... |
 

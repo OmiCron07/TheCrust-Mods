@@ -65,11 +65,8 @@ Dropped on export, rebuilt on import: `Summary` (`Capture.Summary`), `Created` (
 ## Steps
 0. **DevBridge probe** (`Scripts/Invoke-DevBridge.ps1`, read-mostly, no deploy):
    - NameBox accepts Ctrl+V of a 2.5 KB and a 10 KB ASCII string; `UI.GetName()` returns it intact (no truncation, no lag spike).
-   - Windows clipboard export, keep the first that works without a visible console flash:
-     - A: `io.popen("clip", "w")` write + close (ASCII only, so `clip` code page is irrelevant). Check `io.popen` exists in UE4SS Lua.
-     - B: a UE4 clipboard function reachable from UE4SS (`FPlatformApplicationMisc::ClipboardCopy` is not Blueprint-exposed in 4.27; search the game's reflected functions for `Clipboard`).
-     - C (fallback, pure UMG): put the string in NameBox, focus, select all; the user presses Ctrl+C.
-   - Record the result in `Knowledge/Research/BuildingSystemAndBlueprints.md` (or a new card), commit.
+   - Windows clipboard: the game's `UUIFunctionLib` has `CopyToClipboard(FString)` / `PasteFromClipboard()` (`Knowledge/Research/GameClipboard.md`). Probe both through `Default__UIFunctionLib`, return marshalling, 10 KB round trip. Fallback only if broken: NameBox select-all + user Ctrl+C (`io.popen("clip")` flashes a console).
+   - Record the result in `Knowledge/Research/GameClipboard.md` (status `stable`), commit.
 1. **`deflate.lua`**: compressor + inflater as above. Inflate hardening: `MaxOut` cap (256 KB) checked on every write, distance <= bytes written, code / length tables bounds-checked, bit reader errors on end of input, error on missing final block. Every error = `error("...")` caught by `pcall` in `Share.Decode`.
 2. **`share.lua`**:
    - base64url encode / decode; decode rejects any char outside the alphabet and impossible lengths (len % 4 == 1).
@@ -83,7 +80,7 @@ Dropped on export, rebuilt on import: `Summary` (`Capture.Summary`), `Created` (
      - Belts: <= 2000 paths, <= 10 000 cells total; letters `^[a-p]+$`; reconstructed cells within bounds.
      - Undergrounds, Links (indices <= `#Modules`, A ~= B), Distributors (dirs 0-3, levels small ints, `Types` / `Filter` lists of small non-negative ints, <= 32 each), IO `Agency` matches `^[%w_]*$`.
 3. **Export**: **Share** button per library row (`Button("Share", "Share", i)`). `Share.Encode(BP)` -> Windows clipboard via the step 0 method -> `Notify("Share string copied to the Windows clipboard (N chars)")`, plus "(over 2000 chars: Discord sends it as a file)" when N > 2000.
-4. **Import**: **Import** button on the name row, next to Save selection. `UI.GetName()`; no `TCBP1:` prefix -> "Paste a TCBP1: share string in the name box first"; other `TCBP<n>:` -> "Made with a newer Blueprints version". In game, after `Share.Decode`: every class must resolve with `Game.LoadClass` and be a `ModuleBase` child, else reject naming the unknown classes (other game version / modded content). Duplicate name -> suffix ` (2)`, ` (3)`... Set `Summary`, `Created`, `Skipped = 0`, `table.insert(State.Library, 1, BP)`, `UI.SetName("")`, `SaveLibrary()`, `Notify("Imported 'X': <summary>")`. Imported `Layer` differs from the current one: import anyway (placement already checks the layer).
+4. **Import**: **Import** button on the name row, next to Save selection. Source = name box if it holds a `TCBP` string, else the Windows clipboard (`PasteFromClipboard`); neither -> "Copy a TCBP1: share string first"; other `TCBP<n>:` -> "Made with a newer Blueprints version". In game, after `Share.Decode`: every class must resolve with `Game.LoadClass` and be a `ModuleBase` child, else reject naming the unknown classes (other game version / modded content). Duplicate name -> suffix ` (2)`, ` (3)`... Set `Summary`, `Created`, `Skipped = 0`, `table.insert(State.Library, 1, BP)`, `UI.SetName("")`, `SaveLibrary()`, `Notify("Imported 'X': <summary>")`. Imported `Layer` differs from the current one: import anyway (placement already checks the layer).
 5. **UI fit**: row = Place / Replace / Rename / Delete / Share + label; check the panel width at 1080p in a screenshot, shorten labels if it overflows. Name row = box + Save selection + Import.
 6. **`selftest.lua`** (runnable with any Lua 5.4, as today):
    - Deflate: round-trip of empty, 1 byte, 64 KB random, highly repetitive text; `Inflate` of a known zlib-produced fixed-Huffman stream (hard-coded bytes) to prove RFC compliance, not just self-consistency.

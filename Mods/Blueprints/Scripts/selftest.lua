@@ -167,4 +167,111 @@ assert(Back.Name == BP.Name and Back.Modules[1].DR == -1.5 and Back.Belts[1][2][
 assert(Back.Modules[1].Mirrored == false and #Back.Links == 0)
 assert(Storage.Deserialize("os.exit()") == nil, "sandbox must reject code")
 
+-- Deflate: round trips, RFC vectors produced by zlib (fixed Huffman, stored), hostile streams.
+local Deflate = require("deflate")
+local Seed, Noise = 12345, {}
+for i = 1, 65536 do
+    Seed = (Seed * 1103515245 + 12345) % 2147483648
+    Noise[i] = string.char(Seed >> 16 & 255)
+end
+for _, S in ipairs({ "", "a", table.concat(Noise), string.rep("abc", 5000) .. "end" }) do
+    assert(Deflate.Inflate(Deflate.Compress(S), 1e6) == S, "deflate round trip " .. #S)
+end
+local function Hex(H) return (H:gsub("%x%x", function(X) return string.char(tonumber(X, 16)) end)) end
+local Vector = string.rep("TCBP fixed vector: abcabcabcabc, hello hello hello hello! 0123456789", 3)
+assert(Deflate.Inflate(Hex("0b71760a5048cbac484d51284b4d2ec92fb252484c4a86231d858cd49c9c7c4c5251c1c0d0c8d8c4d4ccdcc2326490980100"), 1e6) == Vector, "zlib fixed vector")
+assert(Deflate.Inflate(Hex("010700f8ff73746f72656421"), 1e6) == "stored!", "zlib stored vector")
+local function Fails(F, ...) return not pcall(F, ...) end
+assert(Fails(Deflate.Inflate, Deflate.Compress(string.rep("a", 5000)), 1000), "output cap")
+assert(Fails(Deflate.Inflate, "\5\0\0", 1e6), "dynamic block rejected")
+assert(Fails(Deflate.Inflate, Deflate.Compress("hello world"):sub(1, 4), 1e6), "truncated stream")
+-- Fixed block (bits 1, 01) whose first symbol is 257 = length 3 (code 0000001, bits 3-9), distance 1.
+assert(Fails(Deflate.Inflate, string.char(0x03, 0x02, 0x00), 1e6), "distance before start")
+
+-- Share strings: lossless round trip of every field, footprint dedup, hostile strings.
+local Share = require("share")
+local Big = "/Game/Blueprints/Modules/Category/05_Storage/BigBulkStorage/MB_BigBulkStorage.MB_BigBulkStorage_C"
+local Full = {
+    Name = "Share \"test\"", Layer = 2, Summary = "x", Created = "y", Skipped = 1,
+    Modules = {
+        { Class = Big, DR = -1.5, DC = 2, Turns = 1, Mirrored = true, Recipe = "APS_X", Cells = { { -2, 2 }, { -1, 2 } },
+            IO = { { Agency = "SAI_prodInput", Filter = { 3, 4 }, Lock = true, Overflow = false }, false } },
+        { Class = Big, DR = 4.5, DC = -3, Turns = 1, Mirrored = true, Recipe = "", Cells = { { 4, -3 }, { 5, -3 } } },
+        { Class = "/Game/Mods/Odd.OtherName_C", DR = 0, DC = 0, Turns = 0, Mirrored = false, Recipe = "", Cells = { { 0, 0 } } },
+    },
+    Belts = {
+        { { 0, 0, 1 }, { 0, 1, 2 }, { 1, 1, 2 } },
+        { { 5, 5, 1 }, { 6, 5, 2 } },   -- corner cell: direction differs from the move
+        { { 0, 0, 1 }, { 0, 3, 1 } },   -- non-adjacent step -> flat form
+        { { 2, 2 }, { 2, 3, 1 } },      -- missing direction -> flat form
+    },
+    Undergrounds = { { { 3, 0 }, { 5, 0 }, 2 } },
+    Links = { { 1, 2 }, { 2, 3 } },
+    Distributors = { { DR = 2, DC = -1, Inputs = { { Dir = 1, Level = 0 } },
+        Outputs = { { Dir = 0, Level = 2, Types = { 5 }, Priority = true, Locked = false, HandTuned = true, Blocked = false } } } },
+}
+local function Same(A, B, Where)
+    if type(A) ~= "table" or type(B) ~= "table" then
+        assert(A == B, Where .. ": " .. tostring(A) .. " ~= " .. tostring(B))
+        return
+    end
+    for K, V in pairs(A) do Same(V, B[K], Where .. "." .. tostring(K)) end
+    for K in pairs(B) do assert(A[K] ~= nil, Where .. "." .. tostring(K) .. " unexpected") end
+end
+local function Shared(BP)
+    local T = {}
+    for K, V in pairs(BP) do if K ~= "Summary" and K ~= "Created" and K ~= "Skipped" then T[K] = V end end
+    T.Undergrounds, T.Distributors = T.Undergrounds or {}, T.Distributors or {}
+    return T
+end
+local Str = Share.Encode(Full)
+assert(Str:match("^TCBP1:[%w%-_]+$"), "share string alphabet")
+local Back, Err = Share.Decode(" \n" .. Str:sub(1, 20) .. "\n" .. Str:sub(21) .. "  ")
+assert(Back, Err)
+Same(Shared(Full), Back, "share")
+assert(Share.ToPayload(Full)[4][2][7] == 0, "same footprint must be deduplicated")
+
+local function Payload() return Share.ToPayload(Full) end
+local function Packed(P) return Share.Pack(Storage.Serialize(P, nil, true)) end
+local Hostile = {
+    "hello", "TCBP2:AAAA", Share.Prefix .. "A", Share.Prefix .. "ab!d", Str:sub(1, -10),
+    Share.Prefix .. string.rep("A", 300000),
+    Share.Pack("{(function() end)()}"), Share.Pack("while true do end"), Share.Pack("os.exit()"),
+    Share.Pack("[[x]]"), Share.Pack("{1}--x"), Share.Pack("{{{{{{{1}}}}}}}"), Share.Pack("{\"" .. string.rep("x", 300) .. "\"}"),
+}
+local Mutations = {
+    function(P) P[3][1] = "../../Engine/X" end,
+    function(P) P[3][1] = "/Game/X" end,
+    function(P) P[4][1][1] = 99 end,
+    function(P) P[4][1][4] = 4 end,
+    function(P) P[4][1][2] = 0.25 end,
+    function(P) P[4][1][7] = 0 end,          -- footprint reference before any explicit footprint
+    function(P) P[5][1][3] = "aq" end,
+    function(P) P[7][1] = 0 end,
+    function(P) P[7] = { 1, 1 } end,
+    function(P) P[2] = 1 end,
+    function(P) P[8][1][3][1][1] = 7 end,
+    function(P) P[6][1] = { 1, 2, 3 } end,
+    function(P) P[4][1][8][1][1] = "x y" end,
+}
+for _, M in ipairs(Mutations) do
+    local P = Payload()
+    M(P)
+    Hostile[#Hostile + 1] = Packed(P)
+end
+for i, S in ipairs(Hostile) do
+    local BP, Why = Share.Decode(S)
+    assert(BP == nil and type(Why) == "string", "hostile share string " .. i .. " accepted")
+end
+
+-- Optional: the real library (set BLUEPRINTS_LIBRARY to library.lua) round-trips; prints sizes.
+local LibraryPath = os.getenv("BLUEPRINTS_LIBRARY")
+if LibraryPath then
+    for _, BP in ipairs(Storage.Load(LibraryPath)) do
+        local S = Share.Encode(BP)
+        Same(Shared(BP), assert(Share.Decode(S)), BP.Name)
+        print(string.format("  %-30s %6d chars", BP.Name, #S))
+    end
+end
+
 print("selftest OK")
