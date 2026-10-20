@@ -189,4 +189,6 @@ but overwrites `Scripts/config.lua`.
   DEFLATE vectors, round trips, hostile inputs), runnable with any Lua 5.4. Set `BLUEPRINTS_LIBRARY`
   to a `library.lua` to also round-trip a real library and print share string sizes.
 - Share string format: header of `Scripts/share.lua`; plan and measurements: `Docs/Plans/BlueprintShareStrings.md`.
+- Panel image: `.\Scripts\New-BlueprintsPanelImage.ps1` renders `Docs/Images/blueprints-panel.png` from
+  `Docs/Images/blueprints-panel-raw.png` (a capture of the open panel); box coordinates are in the script.
 - Research notes: `Knowledge/Research/BuildingSystemAndBlueprints.md`.

@@ -24,6 +24,7 @@ Provide navigational map of TheCrust modding directories and component boundarie
   - `Scripts/Invoke-DevBridge.ps1`: Runs Lua in the live game through the DevBridge mod.
   - `Scripts/Get-GameScreenshot.ps1`: GPU-safe game window capture into `Captures/` (gitignored).
   - `Scripts/Invoke-WinDrive.ps1`: Guarded mouse/keyboard batches to the game window (see `Playbooks/LiveVerification.md`).
+  - `Scripts/New-BlueprintsPanelImage.ps1`: Renders the annotated Blueprints panel image from a raw capture (System.Drawing).
 - `Mods/`: Staging directory for developing custom mods (Pak mods, Lua scripts).
 - `Docs/Plans/`: Implementation plans for upcoming mods / features (handoff between agents).
 - `Knowledge/`: Self-improving OKF knowledge base.
