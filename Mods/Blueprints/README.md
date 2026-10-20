@@ -17,20 +17,20 @@ pastes are cancelled when you switch layer.
 
 ### Copy and paste an area
 1. Click **Select area** ② (or press `Ctrl+K`), then press and drag the left mouse button over the
-   modules and belts to copy. A highlight shows the captured elements and **Selection info** ⑦ counts
+   modules and belts to copy. A highlight shows the captured elements and **Selection info** ⑪ counts
    them.
-2. Click **Copy + paste** ③ (`Ctrl+Shift+K`). A preview follows the cursor (see
+2. Click **Copy + paste** ④ (`Ctrl+Shift+K`). A preview follows the cursor (see
    [Paste preview](#paste-preview)).
 3. Rotate with `R` / `Shift+R`, mirror with `T`, then left click to place the ghosts. You stay in
    paste mode: keep clicking to place more copies.
-4. Right click to stop pasting. **Paste clipboard** ④ (`Alt+K`) pastes the same thing again later.
-   **Copy** (`Ctrl+Insert`) only puts the selection in the clipboard, without starting a paste.
+4. Right click to stop pasting. **Paste clipboard** ⑤ (`Alt+K`) pastes the same thing again later.
+   **Copy** ③ (`Ctrl+Insert`) only puts the selection in the clipboard, without starting a paste.
 
 ### Move or delete an area
 1. Select an area as above.
-2. **Cut** (`Shift+Delete`, right of **Upgrade belts**) deletes the selection and starts pasting
+2. **Cut** ⑨ (`Shift+Delete`) deletes the selection and starts pasting
    it: place it elsewhere, then right click to stop. The cut elements stay in the clipboard (`Alt+K`).
-3. **Delete** (`Delete`, right of **Cut**) deletes the selection. The button asks for a second click
+3. **Delete** ⑩ (`Delete`) deletes the selection. The button asks for a second click
    (**Confirm?**); the `Delete` key deletes right away.
 
 Both use the vanilla demolition tool: planned ghosts and holo belts vanish, built belts are removed
@@ -42,20 +42,20 @@ kept cells.
 
 ### Save and reuse a blueprint
 1. Select an area as above.
-2. Type a name in the name box ⑧ and click **Save selection** (an empty name gives `Blueprint N`).
+2. Type a name in the name box ⑫ and click **Save selection** (an empty name gives `Blueprint N`).
    The blueprint appears at the top of the **Library**.
-3. Later, click **Place** ⑨ next to it to paste it, exactly like a copy.
-4. To update it: select the new area, then click **Replace** next to it, then **Confirm?** on the
+3. Later, click **Place** ⑭ next to it to paste it, exactly like a copy.
+4. To update it: select the new area, then click **Replace** ⑮ next to it, then **Confirm?** on the
    same button. It keeps its name and place in the library.
-5. To rename: type the new name in the name box, then click **Rename** ⑩. To delete: click
-   **Delete** ⑪, then **Confirm?** on the same button.
+5. To rename: type the new name in the name box, then click **Rename** ⑯. To delete: click
+   **Delete** ⑱, then **Confirm?** on the same button.
 
 ### Share a blueprint with other players
-- **Share** (library row, left of **Delete**) copies a share string of that blueprint to the Windows
+- **Share** ⑰ (library row) copies a share string of that blueprint to the Windows
   clipboard: text starting with `TCBP1:`, usually 300 to 2500 characters. Paste it in Discord, Reddit,
   a text file... In Discord, wrap it in a code block (three backticks) so it stays intact; Discord
   sends a string over 2000 characters as a `message.txt` file.
-- **Import** (right of **Save selection**) adds the blueprint of a share string to the top of the
+- **Import** ⑬ (right of **Save selection**) adds the blueprint of a share string to the top of the
   library: copy the string anywhere, then click **Import**. You can also paste it in the name box
   first. A name already in the library gets a ` (2)` suffix.
 - A share string only contains data, never code: Import checks every value and refuses damaged
@@ -70,13 +70,13 @@ kept cells.
 
 ### Build the ghosts
 - One by one: the vanilla play button of each planned module.
-- All at once: select the area of the ghosts, then click **Build selection** ⑥ (`Shift+K`). This
+- All at once: select the area of the ghosts, then click **Build selection** ⑦ (`Shift+K`). This
   starts construction of the planned modules and holo belts inside the selection.
-- Or paste directly as construction: switch **Paste as** ⑤ to **Build** (`Ctrl+Alt+K`), see
+- Or paste directly as construction: switch **Paste as** ⑥ to **Build** (`Ctrl+Alt+K`), see
   [Paste modes](#paste-modes).
 
 ### Upgrade belts
-Select an area, then click **Upgrade belts** (right of **Build selection**). Every belt section with a
+Select an area, then click **Upgrade belts** ⑧. Every belt section with a
 cell in the selection (built or holo) goes up one tier, exactly like clicking it with the vanilla
 upgrade tool: credits are taken the same way and the tier stops at the highest one you researched.
 The tier belongs to a whole section, so a section crossing the selection edge is upgraded whole.
@@ -88,24 +88,24 @@ lack of credits. The game has no downgrade.
 |---|---------|--------|--------------|
 | 1 | Status line | | Result of the last action and what to do next (e.g. "Drag with the left mouse button over the area"). |
 | 2 | Select area | `Ctrl+K` | Starts an area selection: press and drag the left mouse button. Right click cancels or clears the selection. |
-| | Copy | `Ctrl+Insert` | Copies the selection to the clipboard without pasting (button left of **Copy + paste**). |
-| 3 | Copy + paste | `Ctrl+Shift+K` | Copies the selection to the clipboard and starts pasting it. |
-| 4 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied or cut selection, or the last placed blueprint. |
-| 5 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
-| 6 | Build selection | `Shift+K` | Starts construction of the planned modules and holo belts inside the selection. |
-| | Upgrade belts | | Upgrades the belts (built and holo) of the selection by one tier with the vanilla upgrade tool, see [Upgrade belts](#upgrade-belts). |
-| | Cut | `Shift+Delete` | Deletes the selection and starts pasting it; it also becomes the clipboard (button right of **Upgrade belts**). |
-| | Delete | `Delete` | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?** (the key deletes right away). |
-| 7 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
-| 8 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
-| | Import | | Adds the blueprint of a share string (name box, else Windows clipboard) to the library, see [Share a blueprint](#share-a-blueprint-with-other-players). |
-| 9 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
-| | Replace | | Overwrites that blueprint with the current selection, keeping its name (button right of **Place**); the first click turns the button into **Confirm?**. |
-| 10 | Rename | | Renames that blueprint with the text of the name box. |
-| | Share | | Copies a share string of that blueprint to the Windows clipboard (button right of **Rename**). |
-| 11 | Delete | | Deletes that blueprint; the first click turns the button into **Confirm?**. |
-| 12 | Pages | | 8 blueprints per page, newest first. |
-| 13 | Keybinds | | Reminder of the hotkeys, as configured in `Scripts/config.lua`. |
+| 3 | Copy | `Ctrl+Insert` | Copies the selection to the clipboard without pasting. |
+| 4 | Copy + paste | `Ctrl+Shift+K` | Copies the selection to the clipboard and starts pasting it. |
+| 5 | Paste clipboard | `Alt+K` | Pastes the clipboard again: the last copied or cut selection, or the last placed blueprint. |
+| 6 | Paste as: Plan / Build | `Ctrl+Alt+K` | Switches the paste mode between planning ghosts and direct construction. |
+| 7 | Build selection | `Shift+K` | Starts construction of the planned modules and holo belts inside the selection. |
+| 8 | Upgrade belts | | Upgrades the belts (built and holo) of the selection by one tier with the vanilla upgrade tool, see [Upgrade belts](#upgrade-belts). |
+| 9 | Cut | `Shift+Delete` | Deletes the selection and starts pasting it; it also becomes the clipboard. |
+| 10 | Delete | `Delete` | Deletes the selection (planned ghosts, belts, dismantle order on built modules); the first click turns the button into **Confirm?** (the key deletes right away). |
+| 11 | Selection info | | Modules, belt cells, distributors, underground belts and wires captured by the current selection. |
+| 12 | Name box + Save selection | | Saves the selection to the library under that name. The name box is also used by **Rename**. |
+| 13 | Import | | Adds the blueprint of a share string (name box, else Windows clipboard) to the library, see [Share a blueprint](#share-a-blueprint-with-other-players). |
+| 14 | Place | | Starts pasting that blueprint; it also becomes the clipboard. |
+| 15 | Replace | | Overwrites that blueprint with the current selection, keeping its name; the first click turns the button into **Confirm?**. |
+| 16 | Rename | | Renames that blueprint with the text of the name box. |
+| 17 | Share | | Copies a share string of that blueprint to the Windows clipboard. |
+| 18 | Delete | | Deletes that blueprint; the first click turns the button into **Confirm?**. |
+| 19 | Pages | | 8 blueprints per page, newest first. |
+| 20 | Keybinds | | Reminder of the hotkeys, as configured in `Scripts/config.lua`. |
 
 ## Controls
 | Key | Action |
