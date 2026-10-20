@@ -61,6 +61,12 @@ kept cells.
 - A share string only contains data, never code: Import checks every value and refuses damaged
   strings and module types the game does not know (other game version or mod content), with the
   reason in the status line.
+- Try it: copy this string, click **Import**, then **Place** it. It writes `BLUEPRINT` in belts
+  (45 x 7 cells, belts only, 141 cells).
+
+  ```
+  TCBP1:q1Zy8gl1DQjy9AtRKM5Mz1PQMNJU0jHQqa4Fo2pdQx1dQ0sdpbQ0JSDXCMgx1VFKBIM0IIAJGiAJZkMAVMpIR6mgoABVB8hQE5iZQBZQN0QPUB6oDKgeqsocpBnMNgKxQZIQY0EWQg0z1DE0hNoONQ5J0kjHCMKBqTUCugfiGKixuoYWYIOBliK5AWqriQ7Qt9iEDYHOh4oDvQVBcH9Dgg6EagE
+  ```
 
 ### Build the ghosts
 - One by one: the vanilla play button of each planned module.
