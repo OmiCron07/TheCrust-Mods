@@ -1,6 +1,6 @@
 # Plan: Blueprint share strings (export / import in `Mods/Blueprints/`)
 
-Status: implemented (`share.lua`, `deflate.lua`, selftest green, deployed 2026-10-19); pending: step 0 in-game probe, step 7 live verify, release. The blueprint library is already global (`library.lua` in the mod folder, not per save); this adds sharing between players through a copy-pasteable string.
+Status: done 2026-10-20. Live verified: game clipboard round trip (10 KB), codec in game Lua 5.4 (<= 13 ms), Share -> Import -> library entry identical to the original, paste preview of the import, damaged string rejected in the status line. The blueprint library is already global (`library.lua` in the mod folder, not per save); this adds sharing between players through a copy-pasteable string.
 
 ## Goal (v1)
 - **Share** on a library row puts a `TCBP1:...` string on the Windows clipboard.
